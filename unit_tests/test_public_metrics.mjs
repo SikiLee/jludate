@@ -13,7 +13,7 @@ function buildDbMock(resolver) {
 test('getPublicHomeMetrics returns database-backed values', async () => {
   const identityDb = buildDbMock(async () => ({ rows: [{ total: 10 }] }));
   const surveyDb = buildDbMock(async (sql) => {
-    if (sql.includes('FROM szudate_app.survey_responses')) {
+    if (sql.includes('FROM uniday_app.survey_responses')) {
       return { rows: [{ total: 6 }] };
     }
     if (sql.includes('SELECT respondent1_id AS respondent_id')) {
@@ -35,7 +35,7 @@ test('getPublicHomeMetrics returns database-backed values', async () => {
 test('survey completion rate is capped at 100%', async () => {
   const identityDb = buildDbMock(async () => ({ rows: [{ total: 3 }] }));
   const surveyDb = buildDbMock(async (sql) => {
-    if (sql.includes('FROM szudate_app.survey_responses')) {
+    if (sql.includes('FROM uniday_app.survey_responses')) {
       return { rows: [{ total: 9 }] };
     }
     if (sql.includes('SELECT respondent1_id AS respondent_id')) {

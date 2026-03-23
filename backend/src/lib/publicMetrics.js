@@ -35,14 +35,14 @@ export async function getPublicHomeMetrics(identityDb, surveyDb) {
     identityDb.query(
       `
       SELECT COUNT(*)::int AS total
-      FROM szudate_app.users
+      FROM uniday_app.users
       WHERE is_active = TRUE
       `
     ),
     surveyDb.query(
       `
       SELECT COUNT(*)::int AS total
-      FROM szudate_app.survey_responses
+      FROM uniday_app.survey_responses
       `
     ),
     surveyDb.query(
@@ -50,11 +50,11 @@ export async function getPublicHomeMetrics(identityDb, surveyDb) {
       SELECT COUNT(*)::int AS total
       FROM (
         SELECT respondent1_id AS respondent_id
-        FROM szudate_app.match_results
+        FROM uniday_app.match_results
         WHERE respondent1_id IS NOT NULL
         UNION
         SELECT respondent2_id AS respondent_id
-        FROM szudate_app.match_results
+        FROM uniday_app.match_results
         WHERE respondent2_id IS NOT NULL
       ) matched_users
       `

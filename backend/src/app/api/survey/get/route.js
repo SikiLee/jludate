@@ -37,7 +37,7 @@ export async function GET(request) {
     const surveyResult = await surveyPool.query(
       `
       SELECT answers, rose_code, rose_name, dimension_scores, updated_at
-      FROM szudate_app.survey_responses
+      FROM uniday_app.survey_responses
       WHERE respondent_id = $1
       LIMIT 1
       `,

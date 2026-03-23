@@ -13,7 +13,7 @@ function Navbar() {
   const [, setAuthVersion] = useState(0);
   const token = getAccessToken();
   const isAdmin = getIsAdmin();
-  const brandName = siteConfig?.brand_name || 'SZUDate';
+  const brandName = siteConfig?.brand_name || 'uniday';
 
   useEffect(() => {
     const handleScroll = () => {

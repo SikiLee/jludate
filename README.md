@@ -1,6 +1,6 @@
-# SZUDate
+# uniday
 
-SZUDate 是校园恋爱匹配平台（默认品牌名，可在管理端改名为 THUDate 等）。当前版本已实现 ROSE 50 题评分、四维人格判型、硬性过滤、加权匹配、互补加分、每周二 21:00 自动派发和匹配邮件通知，并支持站点品牌/邮箱域名白名单/首页背景图配置。邮件通道已切换为标准 SMTP 认证服务（企业邮箱/QQ/SendGrid），不再使用 Mailpit。
+uniday 是校园恋爱匹配平台（默认品牌名，可在管理端改名为 THUDate 等）。当前版本已实现 ROSE 50 题评分、四维人格判型、硬性过滤、加权匹配、互补加分、每周二 21:00 自动派发和匹配邮件通知，并支持站点品牌/邮箱域名白名单/首页背景图配置。邮件通道已切换为标准 SMTP 认证服务（企业邮箱/QQ/SendGrid），不再使用 Mailpit。
 
 ## How to Run (一键启动命令)
 
@@ -93,7 +93,7 @@ docker compose up --build -d
 
 1. 首次将某个账号设为管理员（示例）：
 ```bash
-docker compose exec db psql -U user -d identity_db -c "UPDATE szudate_app.users SET is_admin = TRUE WHERE email = 'your_admin@szu.edu.cn';"
+docker compose exec db psql -U user -d identity_db -c "UPDATE uniday_app.users SET is_admin = TRUE WHERE email = 'your_admin@szu.edu.cn';"
 ```
 2. 该账号重新登录后访问：
    - 前端管理页：`http://localhost:8383/admin`

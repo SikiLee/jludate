@@ -33,7 +33,7 @@ export async function GET(request) {
     }
 
     const selfSurveyResult = await surveyPool.query(
-      'SELECT rose_code, rose_name FROM szudate_app.survey_responses WHERE respondent_id = $1 LIMIT 1',
+      'SELECT rose_code, rose_name FROM uniday_app.survey_responses WHERE respondent_id = $1 LIMIT 1',
       [respondentId]
     );
     const selfRoseCode = selfSurveyResult.rowCount > 0 ? selfSurveyResult.rows[0].rose_code : null;
@@ -51,8 +51,8 @@ export async function GET(request) {
         mr.user2_rose_code,
         mr.created_at,
         mrun.created_at AS run_created_at
-      FROM szudate_app.match_results mr
-      INNER JOIN szudate_app.match_runs mrun ON mrun.id = mr.run_id
+      FROM uniday_app.match_results mr
+      INNER JOIN uniday_app.match_runs mrun ON mrun.id = mr.run_id
       WHERE mr.respondent1_id = $1 OR mr.respondent2_id = $1
       ORDER BY mrun.created_at DESC, mr.id DESC
       LIMIT 1

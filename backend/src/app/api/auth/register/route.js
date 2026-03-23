@@ -48,7 +48,7 @@ export async function POST(request) {
     const hashedPassword = await hashPassword(password);
     await identityPool.query(
       `
-      UPDATE szudate_app.users
+      UPDATE uniday_app.users
       SET hashed_password = $1,
           is_active = TRUE,
           verification_code = NULL

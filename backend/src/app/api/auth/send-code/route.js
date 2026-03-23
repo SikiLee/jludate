@@ -44,7 +44,7 @@ export async function POST(request) {
       }
 
       await identityPool.query(
-        'UPDATE szudate_app.users SET verification_code = $1 WHERE id = $2',
+        'UPDATE uniday_app.users SET verification_code = $1 WHERE id = $2',
         [code, existingUser.id]
       );
 

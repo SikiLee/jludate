@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { normalizeAllowedEmailDomains } from './request.js';
 
-export const DEFAULT_BRAND_NAME = 'SZUDate';
+export const DEFAULT_BRAND_NAME = 'uniday';
 export const DEFAULT_ALLOWED_EMAIL_DOMAINS = ['szu.edu.cn'];
 export const DEFAULT_FAQ_ITEMS = [
   {
@@ -221,7 +221,7 @@ async function withOptionalTransaction(db, fn) {
 async function upsertSiteSetting(db, settingKey, settingValue, updatedBy = null) {
   await db.query(
     `
-    INSERT INTO szudate_app.site_settings(
+    INSERT INTO uniday_app.site_settings(
       setting_key,
       setting_value_json,
       updated_by
@@ -241,7 +241,7 @@ async function getSiteSettingRows(db) {
   const result = await db.query(
     `
     SELECT setting_key, setting_value_json, updated_at
-    FROM szudate_app.site_settings
+    FROM uniday_app.site_settings
     WHERE setting_key IN ($1, $2, $3, $4)
     `,
     [
@@ -316,7 +316,7 @@ async function getHomeHeroAssetRow(db) {
       file_size,
       updated_at,
       updated_by
-    FROM szudate_app.site_assets
+    FROM uniday_app.site_assets
     WHERE asset_key = $1
     LIMIT 1
     `,
@@ -404,7 +404,7 @@ export function validateBackgroundUploadFile(file) {
 export async function seedDefaultSiteSettings(db) {
   await db.query(
     `
-    INSERT INTO szudate_app.site_settings(setting_key, setting_value_json)
+    INSERT INTO uniday_app.site_settings(setting_key, setting_value_json)
     VALUES ($1, $2::jsonb)
     ON CONFLICT (setting_key) DO NOTHING
     `,
@@ -413,7 +413,7 @@ export async function seedDefaultSiteSettings(db) {
 
   await db.query(
     `
-    INSERT INTO szudate_app.site_settings(setting_key, setting_value_json)
+    INSERT INTO uniday_app.site_settings(setting_key, setting_value_json)
     VALUES ($1, $2::jsonb)
     ON CONFLICT (setting_key) DO NOTHING
     `,
@@ -422,7 +422,7 @@ export async function seedDefaultSiteSettings(db) {
 
   await db.query(
     `
-    INSERT INTO szudate_app.site_settings(setting_key, setting_value_json)
+    INSERT INTO uniday_app.site_settings(setting_key, setting_value_json)
     VALUES ($1, $2::jsonb)
     ON CONFLICT (setting_key) DO NOTHING
     `,
@@ -431,7 +431,7 @@ export async function seedDefaultSiteSettings(db) {
 
   await db.query(
     `
-    INSERT INTO szudate_app.site_settings(setting_key, setting_value_json)
+    INSERT INTO uniday_app.site_settings(setting_key, setting_value_json)
     VALUES ($1, $2::jsonb)
     ON CONFLICT (setting_key) DO NOTHING
     `,
@@ -541,7 +541,7 @@ export async function saveHomeHeroBackground(db, file, updatedBy = null) {
       const previousResult = await executor.query(
         `
         SELECT file_name
-        FROM szudate_app.site_assets
+        FROM uniday_app.site_assets
         WHERE asset_key = $1
         LIMIT 1
         `,
@@ -552,7 +552,7 @@ export async function saveHomeHeroBackground(db, file, updatedBy = null) {
 
       await executor.query(
         `
-        INSERT INTO szudate_app.site_assets(
+        INSERT INTO uniday_app.site_assets(
           asset_key,
           file_name,
           mime_type,
@@ -593,7 +593,7 @@ export async function removeHomeHeroBackground(db) {
     return { ok: true, data: await getAdminSiteSettings(db) };
   }
 
-  await db.query('DELETE FROM szudate_app.site_assets WHERE asset_key = $1', [SITE_ASSET_KEYS.HOME_HERO_BACKGROUND]);
+  await db.query('DELETE FROM uniday_app.site_assets WHERE asset_key = $1', [SITE_ASSET_KEYS.HOME_HERO_BACKGROUND]);
 
   const existingPath = safeAssetPath(existing.file_name);
   if (existingPath) {

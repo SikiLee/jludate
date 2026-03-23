@@ -40,7 +40,7 @@ export async function POST(request) {
     if (passwordCheck.needs_upgrade) {
       const upgradedPasswordHash = await hashPassword(password);
       await identityPool.query(
-        'UPDATE szudate_app.users SET hashed_password = $1 WHERE id = $2',
+        'UPDATE uniday_app.users SET hashed_password = $1 WHERE id = $2',
         [upgradedPasswordHash, user.id]
       );
     }

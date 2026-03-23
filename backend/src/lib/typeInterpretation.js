@@ -257,7 +257,7 @@ async function withOptionalTransaction(db, fn) {
 }
 
 export async function seedInterpretationsIfEmpty(db) {
-  const countResult = await db.query('SELECT COUNT(*)::int AS count FROM szudate_app.rose_type_interpretations');
+  const countResult = await db.query('SELECT COUNT(*)::int AS count FROM uniday_app.rose_type_interpretations');
   const count = countResult.rows[0]?.count || 0;
   if (count > 0) {
     return { seeded: false, count };
@@ -270,7 +270,7 @@ export async function seedInterpretationsIfEmpty(db) {
     for (const section of seedSections) {
       const result = await executor.query(
         `
-        INSERT INTO szudate_app.rose_type_interpretations(
+        INSERT INTO uniday_app.rose_type_interpretations(
           rose_code,
           rose_name,
           enabled,
@@ -303,7 +303,7 @@ export async function listTypeInterpretations(db) {
   const result = await db.query(
     `
     SELECT rose_code, rose_name, enabled, updated_at
-    FROM szudate_app.rose_type_interpretations
+    FROM uniday_app.rose_type_interpretations
     ORDER BY rose_code ASC
     `
   );
@@ -320,7 +320,7 @@ export async function getTypeInterpretationForAdmin(db, roseCodeInput) {
   const result = await db.query(
     `
     SELECT rose_code, rose_name, enabled, markdown_content, updated_at, updated_by
-    FROM szudate_app.rose_type_interpretations
+    FROM uniday_app.rose_type_interpretations
     WHERE rose_code = $1
     LIMIT 1
     `,
@@ -358,7 +358,7 @@ export async function updateTypeInterpretation(db, roseCodeInput, payload, updat
 
   const result = await db.query(
     `
-    UPDATE szudate_app.rose_type_interpretations
+    UPDATE uniday_app.rose_type_interpretations
     SET rose_name = $1,
         markdown_content = $2,
         enabled = $3,
@@ -386,7 +386,7 @@ export async function getPublicTypeInterpretation(db, roseCodeInput) {
   const result = await db.query(
     `
     SELECT rose_code, rose_name, enabled, markdown_content, updated_at
-    FROM szudate_app.rose_type_interpretations
+    FROM uniday_app.rose_type_interpretations
     WHERE rose_code = $1
     LIMIT 1
     `,

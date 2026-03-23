@@ -231,18 +231,18 @@ async function grantRuntimeSchemaPrivileges(dbPool, roleName) {
 
   const roleIdentifier = quoteIdentifier(roleName.trim());
 
-  await dbPool.query(`GRANT USAGE ON SCHEMA szudate_app TO ${roleIdentifier}`);
-  await dbPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA szudate_app TO ${roleIdentifier}`);
-  await dbPool.query(`GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA szudate_app TO ${roleIdentifier}`);
-  await dbPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA szudate_app GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${roleIdentifier}`);
-  await dbPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA szudate_app GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO ${roleIdentifier}`);
+  await dbPool.query(`GRANT USAGE ON SCHEMA uniday_app TO ${roleIdentifier}`);
+  await dbPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA uniday_app TO ${roleIdentifier}`);
+  await dbPool.query(`GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA uniday_app TO ${roleIdentifier}`);
+  await dbPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA uniday_app GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${roleIdentifier}`);
+  await dbPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA uniday_app GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO ${roleIdentifier}`);
 }
 
 async function ensureIdentitySchema() {
-  await identityAdminPool.query('CREATE SCHEMA IF NOT EXISTS szudate_app');
+  await identityAdminPool.query('CREATE SCHEMA IF NOT EXISTS uniday_app');
 
   await identityAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.users (
+    CREATE TABLE IF NOT EXISTS uniday_app.users (
       id SERIAL PRIMARY KEY,
       email VARCHAR(255) UNIQUE,
       email_ciphertext TEXT,
@@ -260,8 +260,8 @@ async function ensureIdentitySchema() {
   `);
 
   await identityAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.user_respondent_links (
-      user_id INTEGER PRIMARY KEY REFERENCES szudate_app.users(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS uniday_app.user_respondent_links (
+      user_id INTEGER PRIMARY KEY REFERENCES uniday_app.users(id) ON DELETE CASCADE,
       respondent_id_ciphertext TEXT NOT NULL,
       respondent_id_hash VARCHAR(64) UNIQUE NOT NULL,
       respondent_id_key_version VARCHAR(32) NOT NULL,
@@ -271,7 +271,7 @@ async function ensureIdentitySchema() {
   `);
 
   await identityAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.access_audit_logs (
+    CREATE TABLE IF NOT EXISTS uniday_app.access_audit_logs (
       id SERIAL PRIMARY KEY,
       actor VARCHAR(128) NOT NULL,
       action VARCHAR(128) NOT NULL,
@@ -282,19 +282,19 @@ async function ensureIdentitySchema() {
     )
   `);
 
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS email_ciphertext TEXT');
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS email_hash VARCHAR(64)');
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS email_key_version VARCHAR(32)');
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS gender VARCHAR(16)');
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS target_gender VARCHAR(16)');
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS orientation VARCHAR(32)');
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE');
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS email_ciphertext TEXT');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS email_hash VARCHAR(64)');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS email_key_version VARCHAR(32)');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS gender VARCHAR(16)');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS target_gender VARCHAR(16)');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS orientation VARCHAR(32)');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
 
-  await identityAdminPool.query('ALTER TABLE szudate_app.users ALTER COLUMN email DROP NOT NULL');
+  await identityAdminPool.query('ALTER TABLE uniday_app.users ALTER COLUMN email DROP NOT NULL');
   await identityAdminPool.query(
     `
-    UPDATE szudate_app.users
+    UPDATE uniday_app.users
     SET hashed_password = $1
     WHERE is_active = FALSE
       AND COALESCE(BTRIM(hashed_password), '') = ''
@@ -303,7 +303,7 @@ async function ensureIdentitySchema() {
   );
 
   await identityAdminPool.query(`
-    UPDATE szudate_app.users
+    UPDATE uniday_app.users
     SET target_gender = CASE
       WHEN orientation = 'prefer_male' THEN 'male'
       WHEN orientation = 'prefer_female' THEN 'female'
@@ -314,21 +314,21 @@ async function ensureIdentitySchema() {
 
   await identityAdminPool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_hash_unique
-    ON szudate_app.users(email_hash)
+    ON uniday_app.users(email_hash)
     WHERE email_hash IS NOT NULL
   `);
-  await identityAdminPool.query('CREATE INDEX IF NOT EXISTS idx_users_is_active ON szudate_app.users(is_active)');
-  await identityAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_user_respondent_links_hash ON szudate_app.user_respondent_links(respondent_id_hash)');
-  await identityAdminPool.query('CREATE INDEX IF NOT EXISTS idx_access_audit_logs_created_at ON szudate_app.access_audit_logs(created_at DESC)');
+  await identityAdminPool.query('CREATE INDEX IF NOT EXISTS idx_users_is_active ON uniday_app.users(is_active)');
+  await identityAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_user_respondent_links_hash ON uniday_app.user_respondent_links(respondent_id_hash)');
+  await identityAdminPool.query('CREATE INDEX IF NOT EXISTS idx_access_audit_logs_created_at ON uniday_app.access_audit_logs(created_at DESC)');
 
   await grantRuntimeSchemaPrivileges(identityAdminPool, IDENTITY_DB_CREDENTIALS.user);
 }
 
 async function ensureSurveySchema() {
-  await surveyAdminPool.query('CREATE SCHEMA IF NOT EXISTS szudate_app');
+  await surveyAdminPool.query('CREATE SCHEMA IF NOT EXISTS uniday_app');
 
   await surveyAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.survey_responses (
+    CREATE TABLE IF NOT EXISTS uniday_app.survey_responses (
       id SERIAL PRIMARY KEY,
       respondent_id VARCHAR(64) UNIQUE NOT NULL,
       answers JSONB NOT NULL,
@@ -341,7 +341,7 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.match_runs (
+    CREATE TABLE IF NOT EXISTS uniday_app.match_runs (
       id SERIAL PRIMARY KEY,
       run_type VARCHAR(20) NOT NULL,
       run_key VARCHAR(64) NOT NULL,
@@ -355,9 +355,9 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.match_results (
+    CREATE TABLE IF NOT EXISTS uniday_app.match_results (
       id SERIAL PRIMARY KEY,
-      run_id INTEGER REFERENCES szudate_app.match_runs(id),
+      run_id INTEGER REFERENCES uniday_app.match_runs(id),
       respondent1_id VARCHAR(64),
       respondent2_id VARCHAR(64),
       base_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0,
@@ -371,7 +371,7 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.survey_questions (
+    CREATE TABLE IF NOT EXISTS uniday_app.survey_questions (
       id SERIAL PRIMARY KEY,
       question_number INTEGER UNIQUE NOT NULL,
       section_title VARCHAR(128) NOT NULL,
@@ -384,7 +384,7 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.rose_type_interpretations (
+    CREATE TABLE IF NOT EXISTS uniday_app.rose_type_interpretations (
       id SERIAL PRIMARY KEY,
       rose_code VARCHAR(8) UNIQUE NOT NULL,
       rose_name VARCHAR(128) NOT NULL,
@@ -397,7 +397,7 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.site_settings (
+    CREATE TABLE IF NOT EXISTS uniday_app.site_settings (
       id SERIAL PRIMARY KEY,
       setting_key VARCHAR(64) UNIQUE NOT NULL,
       setting_value_json JSONB NOT NULL,
@@ -408,7 +408,7 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
-    CREATE TABLE IF NOT EXISTS szudate_app.site_assets (
+    CREATE TABLE IF NOT EXISTS uniday_app.site_assets (
       id SERIAL PRIMARY KEY,
       asset_key VARCHAR(64) UNIQUE NOT NULL,
       file_name TEXT NOT NULL,
@@ -420,66 +420,66 @@ async function ensureSurveySchema() {
     )
   `);
 
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_responses ADD COLUMN IF NOT EXISTS respondent_id VARCHAR(64)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_responses ADD COLUMN IF NOT EXISTS rose_code VARCHAR(8)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_responses ADD COLUMN IF NOT EXISTS rose_name VARCHAR(128)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_responses ADD COLUMN IF NOT EXISTS dimension_scores JSONB');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_responses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_responses ADD COLUMN IF NOT EXISTS respondent_id VARCHAR(64)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_responses ADD COLUMN IF NOT EXISTS rose_code VARCHAR(8)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_responses ADD COLUMN IF NOT EXISTS rose_name VARCHAR(128)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_responses ADD COLUMN IF NOT EXISTS dimension_scores JSONB');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_responses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
 
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS run_id INTEGER REFERENCES szudate_app.match_runs(id)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS respondent1_id VARCHAR(64)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS respondent2_id VARCHAR(64)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS base_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS complementary_bonus NUMERIC(5,1) NOT NULL DEFAULT 0');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS final_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS user1_rose_code VARCHAR(8)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS user2_rose_code VARCHAR(8)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.match_results ADD COLUMN IF NOT EXISTS killer_point TEXT');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS run_id INTEGER REFERENCES uniday_app.match_runs(id)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS respondent1_id VARCHAR(64)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS respondent2_id VARCHAR(64)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS base_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS complementary_bonus NUMERIC(5,1) NOT NULL DEFAULT 0');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS final_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS user1_rose_code VARCHAR(8)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS user2_rose_code VARCHAR(8)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.match_results ADD COLUMN IF NOT EXISTS killer_point TEXT');
 
-  await surveyAdminPool.query('ALTER TABLE szudate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS rose_name VARCHAR(128)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS markdown_content TEXT');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS updated_by INTEGER');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS rose_name VARCHAR(128)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS markdown_content TEXT');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS updated_by INTEGER');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
   await surveyAdminPool.query(`
-    UPDATE szudate_app.rose_type_interpretations
+    UPDATE uniday_app.rose_type_interpretations
     SET updated_at = COALESCE(updated_at, NOW())
     WHERE updated_at IS NULL
   `);
 
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_questions ADD COLUMN IF NOT EXISTS section_title VARCHAR(128)');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_questions ADD COLUMN IF NOT EXISTS question_text TEXT');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_questions ADD COLUMN IF NOT EXISTS display_order INTEGER');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_questions ADD COLUMN IF NOT EXISTS updated_by INTEGER');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_questions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
-  await surveyAdminPool.query('ALTER TABLE szudate_app.survey_questions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_questions ADD COLUMN IF NOT EXISTS section_title VARCHAR(128)');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_questions ADD COLUMN IF NOT EXISTS question_text TEXT');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_questions ADD COLUMN IF NOT EXISTS display_order INTEGER');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_questions ADD COLUMN IF NOT EXISTS updated_by INTEGER');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_questions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+  await surveyAdminPool.query('ALTER TABLE uniday_app.survey_questions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
   await surveyAdminPool.query(`
-    UPDATE szudate_app.survey_questions
+    UPDATE uniday_app.survey_questions
     SET display_order = COALESCE(display_order, question_number),
         section_title = COALESCE(section_title, '未分组'),
         question_text = COALESCE(question_text, '')
   `);
 
   await surveyAdminPool.query(`
-    UPDATE szudate_app.survey_responses
+    UPDATE uniday_app.survey_responses
     SET respondent_id = COALESCE(respondent_id, CONCAT('legacy-', id))
     WHERE respondent_id IS NULL
   `);
 
-  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_survey_responses_respondent_id ON szudate_app.survey_responses(respondent_id)');
-  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_match_runs_run_key ON szudate_app.match_runs(run_key)');
-  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_run_id ON szudate_app.match_results(run_id)');
-  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent1 ON szudate_app.match_results(respondent1_id)');
-  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent2 ON szudate_app.match_results(respondent2_id)');
-  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_rose_type_interpretations_code ON szudate_app.rose_type_interpretations(rose_code)');
-  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_survey_questions_number ON szudate_app.survey_questions(question_number)');
-  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_survey_questions_order ON szudate_app.survey_questions(display_order)');
-  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_key ON szudate_app.site_settings(setting_key)');
-  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_site_assets_key ON szudate_app.site_assets(asset_key)');
+  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_survey_responses_respondent_id ON uniday_app.survey_responses(respondent_id)');
+  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_match_runs_run_key ON uniday_app.match_runs(run_key)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_run_id ON uniday_app.match_results(run_id)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent1 ON uniday_app.match_results(respondent1_id)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent2 ON uniday_app.match_results(respondent2_id)');
+  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_rose_type_interpretations_code ON uniday_app.rose_type_interpretations(rose_code)');
+  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_survey_questions_number ON uniday_app.survey_questions(question_number)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_survey_questions_order ON uniday_app.survey_questions(display_order)');
+  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_key ON uniday_app.site_settings(setting_key)');
+  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_site_assets_key ON uniday_app.site_assets(asset_key)');
   await surveyAdminPool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_match_results_unique_pair_per_run
-    ON szudate_app.match_results(
+    ON uniday_app.match_results(
       run_id,
       LEAST(respondent1_id, respondent2_id),
       GREATEST(respondent1_id, respondent2_id)

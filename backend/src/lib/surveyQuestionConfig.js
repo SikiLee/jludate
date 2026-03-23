@@ -17,7 +17,7 @@ function normalizeDisplayOrder(rawValue, fallbackValue) {
 }
 
 export async function seedSurveyQuestionsIfEmpty(db) {
-  const countResult = await db.query('SELECT COUNT(*)::int AS count FROM uniday_app.survey_questions');
+  const countResult = await db.query('SELECT COUNT(*)::int AS count FROM unidate_app.survey_questions');
   const count = countResult.rows[0]?.count || 0;
   if (count > 0) {
     return { seeded: false, count };
@@ -27,7 +27,7 @@ export async function seedSurveyQuestionsIfEmpty(db) {
   for (const item of definitions) {
     await db.query(
       `
-      INSERT INTO uniday_app.survey_questions(
+      INSERT INTO unidate_app.survey_questions(
         question_number,
         section_title,
         question_text,
@@ -44,7 +44,7 @@ export async function seedSurveyQuestionsIfEmpty(db) {
 
 export async function importSurveyQuestionsFromDefaults(db, { overwrite = false } = {}) {
   const definitions = getQuestionDefinitionList();
-  const existingResult = await db.query('SELECT question_number FROM uniday_app.survey_questions');
+  const existingResult = await db.query('SELECT question_number FROM unidate_app.survey_questions');
   const existingNumbers = new Set(existingResult.rows.map((row) => row.question_number));
 
   let inserted = 0;
@@ -60,7 +60,7 @@ export async function importSurveyQuestionsFromDefaults(db, { overwrite = false 
 
       await db.query(
         `
-        UPDATE uniday_app.survey_questions
+        UPDATE unidate_app.survey_questions
         SET section_title = $1,
             question_text = $2,
             display_order = $3,
@@ -75,7 +75,7 @@ export async function importSurveyQuestionsFromDefaults(db, { overwrite = false 
 
     await db.query(
       `
-      INSERT INTO uniday_app.survey_questions(
+      INSERT INTO unidate_app.survey_questions(
         question_number,
         section_title,
         question_text,
@@ -106,7 +106,7 @@ export async function listSurveyQuestions(db) {
       display_order,
       updated_at,
       updated_by
-    FROM uniday_app.survey_questions
+    FROM unidate_app.survey_questions
     ORDER BY display_order ASC, question_number ASC
     `
   );
@@ -128,7 +128,7 @@ export async function getSurveyQuestionByNumber(db, questionNumberInput) {
       display_order,
       updated_at,
       updated_by
-    FROM uniday_app.survey_questions
+    FROM unidate_app.survey_questions
     WHERE question_number = $1
     LIMIT 1
     `,
@@ -162,7 +162,7 @@ export async function updateSurveyQuestion(db, questionNumberInput, payload, upd
 
   const result = await db.query(
     `
-    UPDATE uniday_app.survey_questions
+    UPDATE unidate_app.survey_questions
     SET section_title = $1,
         question_text = $2,
         display_order = $3,

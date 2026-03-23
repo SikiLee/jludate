@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { identityPool } from './db.js';
 import { hashPassword, verifyPassword } from './password.js';
 
-const SECRET_KEY = process.env.SECRET_KEY || 'supersecretkey-uniday';
+const SECRET_KEY = process.env.SECRET_KEY || 'supersecretkey-unidate';
 const ALGORITHM = 'HS256';
 export { hashPassword, verifyPassword };
 
@@ -33,10 +33,10 @@ export async function getCurrentUserFromRequest(request) {
   let result;
   const subject = String(payload.sub);
   if (/^\d+$/.test(subject)) {
-    result = await identityPool.query('SELECT id, is_admin FROM uniday_app.users WHERE id = $1 LIMIT 1', [Number(subject)]);
+    result = await identityPool.query('SELECT id, is_admin FROM unidate_app.users WHERE id = $1 LIMIT 1', [Number(subject)]);
   } else {
     // Legacy compatibility for old tokens where sub was email.
-    result = await identityPool.query('SELECT id, is_admin FROM uniday_app.users WHERE email = $1 LIMIT 1', [subject]);
+    result = await identityPool.query('SELECT id, is_admin FROM unidate_app.users WHERE email = $1 LIMIT 1', [subject]);
   }
 
   if (result.rowCount === 0) {

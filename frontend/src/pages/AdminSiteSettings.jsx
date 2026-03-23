@@ -105,7 +105,7 @@ function AdminSiteSettings() {
   const [uploading, setUploading] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
   const [form, setForm] = useState({
-    brand_name: 'uniday',
+    brand_name: 'unidate',
     allowed_email_domains_input: 'szu.edu.cn',
     why_choose_us_items: DEFAULT_WHY_CHOOSE_US_ITEMS,
     faq_items: DEFAULT_FAQ_ITEMS,
@@ -119,7 +119,7 @@ function AdminSiteSettings() {
   };
 
   const applyPayload = (payload) => {
-    const brandName = payload?.brand_name || 'uniday';
+    const brandName = payload?.brand_name || 'unidate';
     const domainList = Array.isArray(payload?.allowed_email_domains) && payload.allowed_email_domains.length > 0
       ? payload.allowed_email_domains
       : ['szu.edu.cn'];

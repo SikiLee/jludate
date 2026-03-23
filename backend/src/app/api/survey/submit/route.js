@@ -24,7 +24,7 @@ export async function POST(request) {
     const answers = body?.answers;
 
     const profileResult = await identityPool.query(
-      'SELECT gender, target_gender, orientation FROM uniday_app.users WHERE id = $1 LIMIT 1',
+      'SELECT gender, target_gender, orientation FROM unidate_app.users WHERE id = $1 LIMIT 1',
       [authResult.user.id]
     );
     if (profileResult.rowCount === 0) {
@@ -53,7 +53,7 @@ export async function POST(request) {
 
     await surveyPool.query(
       `
-      INSERT INTO uniday_app.survey_responses(
+      INSERT INTO unidate_app.survey_responses(
         respondent_id,
         answers,
         rose_code,

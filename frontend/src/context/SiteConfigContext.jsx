@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import api from '../api';
 
 const DEFAULT_SETTINGS = {
-  brand_name: 'uniday',
+  brand_name: 'unidate',
   allowed_email_domains: ['szu.edu.cn'],
   why_choose_us_items: [
     {

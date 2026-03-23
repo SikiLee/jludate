@@ -54,7 +54,7 @@ async function writeIdentityAuditLog(db, { actor, action, targetType, targetRef,
   try {
     await db.query(
       `
-      INSERT INTO uniday_app.access_audit_logs(actor, action, target_type, target_ref, purpose)
+      INSERT INTO unidate_app.access_audit_logs(actor, action, target_type, target_ref, purpose)
       VALUES ($1, $2, $3, $4, $5)
       `,
       [
@@ -121,7 +121,7 @@ export async function findUserByEmail(db, emailInput) {
       gender,
       target_gender,
       orientation
-    FROM uniday_app.users
+    FROM unidate_app.users
     WHERE email_hash = $1 OR email = $2
     ORDER BY CASE WHEN email_hash = $1 THEN 0 ELSE 1 END ASC
     LIMIT 1
@@ -142,7 +142,7 @@ export async function createInactiveUserWithEncryptedEmail(db, emailInput, verif
 
   const result = await db.query(
     `
-    INSERT INTO uniday_app.users(
+    INSERT INTO unidate_app.users(
       email,
       email_ciphertext,
       email_hash,
@@ -173,7 +173,7 @@ export async function updateEncryptedEmailForUser(db, userId, emailInput) {
 
   await db.query(
     `
-    UPDATE uniday_app.users
+    UPDATE unidate_app.users
     SET email = NULL,
         email_ciphertext = $1,
         email_hash = $2,
@@ -220,7 +220,7 @@ export async function getRespondentIdByUserId(db, userId, { actor = 'system', pu
   const result = await db.query(
     `
     SELECT respondent_id_ciphertext, respondent_id_hash, respondent_id_key_version
-    FROM uniday_app.user_respondent_links
+    FROM unidate_app.user_respondent_links
     WHERE user_id = $1
     LIMIT 1
     `,
@@ -260,7 +260,7 @@ export async function ensureRespondentIdForUser(db, userId, { actor = 'system', 
     try {
       await db.query(
         `
-        INSERT INTO uniday_app.user_respondent_links(
+        INSERT INTO unidate_app.user_respondent_links(
           user_id,
           respondent_id_ciphertext,
           respondent_id_hash,
@@ -270,10 +270,10 @@ export async function ensureRespondentIdForUser(db, userId, { actor = 'system', 
         VALUES ($1, $2, $3, $4, NOW())
         ON CONFLICT (user_id)
         DO UPDATE SET
-          respondent_id_ciphertext = uniday_app.user_respondent_links.respondent_id_ciphertext,
-          respondent_id_hash = uniday_app.user_respondent_links.respondent_id_hash,
-          respondent_id_key_version = uniday_app.user_respondent_links.respondent_id_key_version,
-          updated_at = uniday_app.user_respondent_links.updated_at
+          respondent_id_ciphertext = unidate_app.user_respondent_links.respondent_id_ciphertext,
+          respondent_id_hash = unidate_app.user_respondent_links.respondent_id_hash,
+          respondent_id_key_version = unidate_app.user_respondent_links.respondent_id_key_version,
+          updated_at = unidate_app.user_respondent_links.updated_at
         `,
         [userId, payload.respondent_id_ciphertext, payload.respondent_id_hash, payload.respondent_id_key_version]
       );
@@ -309,8 +309,8 @@ export async function getUserEmailByRespondentId(db, respondentIdInput, { actor 
       u.email,
       u.email_ciphertext,
       u.email_key_version
-    FROM uniday_app.user_respondent_links l
-    INNER JOIN uniday_app.users u ON u.id = l.user_id
+    FROM unidate_app.user_respondent_links l
+    INNER JOIN unidate_app.users u ON u.id = l.user_id
     WHERE l.respondent_id_hash = $1
     LIMIT 1
     `,
@@ -356,8 +356,8 @@ export async function listActiveIdentityProfilesForMatching(db, { actor = 'syste
       u.orientation,
       l.respondent_id_ciphertext,
       l.respondent_id_key_version
-    FROM uniday_app.users u
-    INNER JOIN uniday_app.user_respondent_links l ON l.user_id = u.id
+    FROM unidate_app.users u
+    INNER JOIN unidate_app.user_respondent_links l ON l.user_id = u.id
     WHERE u.is_active = TRUE
     ORDER BY u.id ASC
     `

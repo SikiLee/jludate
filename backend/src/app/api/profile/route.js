@@ -29,7 +29,7 @@ export async function GET(request) {
     }
 
     const result = await identityPool.query(
-      'SELECT gender, target_gender, orientation FROM uniday_app.users WHERE id = $1 LIMIT 1',
+      'SELECT gender, target_gender, orientation FROM unidate_app.users WHERE id = $1 LIMIT 1',
       [authResult.user.id]
     );
 
@@ -65,7 +65,7 @@ export async function POST(request) {
 
     await identityPool.query(
       `
-      UPDATE uniday_app.users
+      UPDATE unidate_app.users
       SET gender = $1,
           target_gender = $2
       WHERE id = $3

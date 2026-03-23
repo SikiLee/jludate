@@ -49,7 +49,7 @@ async function resolveBrandName() {
   try {
     return await getSiteBrandName(surveyPool);
   } catch {
-    return 'uniday';
+    return 'unidate';
   }
 }
 

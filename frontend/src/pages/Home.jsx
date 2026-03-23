@@ -15,7 +15,7 @@ function Home() {
     matched_users: null
   });
   const [countdownDeadlineMs, setCountdownDeadlineMs] = useState(null);
-  const brandName = siteConfig.brand_name || 'uniday';
+  const brandName = siteConfig.brand_name || 'unidate';
   const allowedDomains = Array.isArray(siteConfig.allowed_email_domains) && siteConfig.allowed_email_domains.length > 0
     ? siteConfig.allowed_email_domains
     : ['szu.edu.cn'];

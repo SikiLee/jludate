@@ -136,7 +136,7 @@ async function loadCandidates() {
   const surveyRowsResult = await surveyPool.query(
     `
     SELECT respondent_id, answers
-    FROM uniday_app.survey_responses
+    FROM unidate_app.survey_responses
     WHERE respondent_id = ANY($1::text[])
     `,
     [respondentIds]
@@ -172,7 +172,7 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
   const runStartedAt = new Date();
 
   const existingRun = await surveyPool.query(
-    'SELECT id, status FROM uniday_app.match_runs WHERE run_key = $1 LIMIT 1',
+    'SELECT id, status FROM unidate_app.match_runs WHERE run_key = $1 LIMIT 1',
     [runKey]
   );
 
@@ -194,7 +194,7 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
 
     const runInsert = await client.query(
       `
-      INSERT INTO uniday_app.match_runs(run_type, run_key, status, initiated_by)
+      INSERT INTO unidate_app.match_runs(run_type, run_key, status, initiated_by)
       VALUES ($1, $2, $3, $4)
       RETURNING id
       `,
@@ -207,7 +207,7 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
     for (const candidate of candidates) {
       await client.query(
         `
-        UPDATE uniday_app.survey_responses
+        UPDATE unidate_app.survey_responses
         SET rose_code = $1,
             rose_name = $2,
             dimension_scores = $3::jsonb,
@@ -233,7 +233,7 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
 
       const insertResult = await client.query(
         `
-        INSERT INTO uniday_app.match_results(
+        INSERT INTO unidate_app.match_results(
           run_id,
           respondent1_id,
           respondent2_id,
@@ -272,7 +272,7 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
 
     await client.query(
       `
-      UPDATE uniday_app.match_runs
+      UPDATE unidate_app.match_runs
       SET status = $1,
           candidate_count = $2,
           pair_count = $3,

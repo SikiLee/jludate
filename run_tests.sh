@@ -24,7 +24,7 @@ run_step() {
   echo "" | tee -a "$LOG_FILE"
 }
 
-echo "Starting uniday Verification Suite..." | tee -a "$LOG_FILE"
+echo "Starting unidate Verification Suite..." | tee -a "$LOG_FILE"
 
 run_step "Install backend dependencies" npm install --prefix backend
 run_step "Install frontend dependencies" npm install --prefix frontend

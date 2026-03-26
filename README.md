@@ -1,16 +1,8 @@
 # unidate
-
-unidate 是校园恋爱匹配平台（默认品牌名，可在管理端改名为 THUDate 等）。当前版本已实现 ROSE 50 题评分、四维人格判型、加权匹配、互补加分、每周二 21:00 自动派发、站内匹配会话和匹配邮件通知（邮件默认仅提醒去站内查看详情），并支持站点品牌/邮箱域名白名单/首页背景图配置。邮件通道已切换为标准 SMTP 认证服务（企业邮箱/QQ/SendGrid），不再使用 Mailpit。
-
 受斯坦福大学 DateDrop 和上海交大 SJTUDate 的启发，我们打造了 UniDate。  
 在这里，Uni 既代表 University（大学），也代表 Unique（唯一）。我们希望过滤掉世俗的喧嚣，将交友拉回纯粹的智性圈层，为你寻找浩瀚人海中的那道唯一正解。  
-为了避免各高校反复造轮子，我们开源了这个产品，欢迎各高校部署使用，也欢迎开发者提 issue。
-
-## Type.md 与 query.md 是什么
-
-- `Type.md`：16 种 ROSE 恋爱人格解读内容的源文档。系统首次启动且数据库解读表为空时，会从该文件导入；导入后运行时以数据库为准，后续可在管理端编辑。
-- `query.md`：维度题目映射表的导出快照文档（用于审阅/对齐算法配置），不作为运行时数据源。
-- `query.md` 可通过脚本更新：`tools/export_dimension_mapping_to_query_md.sh`（从数据库当前题库导出）。
+当前版本已实现 ROSE 50 题评分、四维人格判型、加权匹配、互补加分、每周二 21:00 自动派发、站内匹配会话和匹配邮件通知（邮件默认仅提醒去站内查看详情），并支持站点品牌/邮箱域名白名单/首页背景图配置。
+体验地址：http://www.unidate.site/
 
 ## How to Run (一键启动命令)
 
@@ -61,16 +53,16 @@ docker compose down
   - `SMTP_PASS`（通常为授权码/API Key，不是登录密码）
   - `SMTP_FROM`（发件地址）
 
-- 示例 1：QQ 邮箱 SMTP
+- 示例 1：网易邮箱 SMTP
 
 ```bash
 export SMTP_ENABLED=true
-export SMTP_HOST=smtp.qq.com
+export SMTP_HOST=smtp.163.com
 export SMTP_PORT=465
 export SMTP_SECURE=true
-export SMTP_USER=your_account@qq.com
-export SMTP_PASS=your_qq_smtp_auth_code
-export SMTP_FROM=your_account@qq.com
+export SMTP_USER=your_account@163.com
+export SMTP_PASS=your_netease_smtp_auth_code
+export SMTP_FROM=your_account@163.com
 docker compose up --build -d
 ```
 
@@ -178,3 +170,7 @@ docker compose up --build -d
 - `docker compose` 启动与健康检查
 - API 端到端测试（`API_tests/`，通过测试开关返回验证码，不依赖 Mailpit）
 - 最终输出 `Total / Passed / Failed` 汇总
+
+## Type.md 
+
+- `Type.md`：16 种 ROSE 恋爱人格解读内容的源文档。系统首次启动且数据库解读表为空时，会从该文件导入；导入后运行时以数据库为准，后续可在管理端编辑。

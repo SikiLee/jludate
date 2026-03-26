@@ -1,22 +1,8 @@
-function getShanghaiWallDate(date = new Date()) {
-  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-}
-
-function getNextTuesday21Shanghai(date = new Date()) {
-  const shanghaiNow = getShanghaiWallDate(date);
-  const target = new Date(shanghaiNow.getTime());
-
-  const day = shanghaiNow.getDay();
-  const daysUntilTuesday = (2 - day + 7) % 7;
-  target.setDate(target.getDate() + daysUntilTuesday);
-  target.setHours(21, 0, 0, 0);
-
-  if (daysUntilTuesday === 0 && shanghaiNow >= target) {
-    target.setDate(target.getDate() + 7);
-  }
-
-  return target;
-}
+import {
+  getHomeMetricsVisibilitySettings,
+  getMatchScheduleSettings,
+  getNextMatchTimeInShanghai
+} from './siteConfig.js';
 
 function computeCompletionRate(registeredUsers, completedUsers) {
   if (!Number.isFinite(registeredUsers) || registeredUsers <= 0) {
@@ -31,7 +17,7 @@ function computeCompletionRate(registeredUsers, completedUsers) {
 }
 
 export async function getPublicHomeMetrics(identityDb, surveyDb) {
-  const [registeredResult, completedResult, matchedUsersResult] = await Promise.all([
+  const [registeredResult, completedResult, matchedUsersResult, matchSchedule, homeMetricsVisibility] = await Promise.all([
     identityDb.query(
       `
       SELECT COUNT(*)::int AS total
@@ -58,22 +44,30 @@ export async function getPublicHomeMetrics(identityDb, surveyDb) {
         WHERE respondent2_id IS NOT NULL
       ) matched_users
       `
-    )
+    ),
+    getMatchScheduleSettings(surveyDb),
+    getHomeMetricsVisibilitySettings(surveyDb)
   ]);
 
   const registeredUsers = registeredResult.rows[0]?.total || 0;
   const completedUsers = completedResult.rows[0]?.total || 0;
   const matchedUsers = matchedUsersResult.rows[0]?.total || 0;
+  const metricVisibility = homeMetricsVisibility || {
+    registered_users: true,
+    survey_completion_rate: true,
+    matched_users: true
+  };
 
-  const nextMatchAt = getNextTuesday21Shanghai();
-  const nowShanghai = getShanghaiWallDate();
+  const nextMatchAt = getNextMatchTimeInShanghai(matchSchedule);
+  const nowShanghai = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const secondsToNextMatch = Math.max(0, Math.floor((nextMatchAt.getTime() - nowShanghai.getTime()) / 1000));
 
   return {
-    registered_users: registeredUsers,
-    survey_completed_users: completedUsers,
-    survey_completion_rate: computeCompletionRate(registeredUsers, completedUsers),
-    matched_users: matchedUsers,
+    registered_users: metricVisibility.registered_users ? registeredUsers : null,
+    survey_completed_users: metricVisibility.survey_completion_rate ? completedUsers : null,
+    survey_completion_rate: metricVisibility.survey_completion_rate ? computeCompletionRate(registeredUsers, completedUsers) : null,
+    matched_users: metricVisibility.matched_users ? matchedUsers : null,
+    metric_visibility: metricVisibility,
     next_match_in_seconds: secondsToNextMatch
   };
 }

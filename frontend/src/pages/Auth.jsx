@@ -7,8 +7,98 @@ import { motion } from 'framer-motion';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { setAccessToken, setIsAdmin } from '../lib/storage';
 
+const DOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+
+function normalizeDomainRule(rawValue) {
+  if (typeof rawValue !== 'string') {
+    return '';
+  }
+
+  const value = rawValue.trim().toLowerCase().replace(/^@+/, '');
+  if (!value || /\.\./.test(value)) {
+    return '';
+  }
+
+  if (value.startsWith('*.')) {
+    const suffix = value.slice(2);
+    if (!suffix || !DOMAIN_REGEX.test(suffix)) {
+      return '';
+    }
+    return `*.${suffix}`;
+  }
+
+  if (!DOMAIN_REGEX.test(value)) {
+    return '';
+  }
+  return value;
+}
+
+function normalizeAllowedDomainRules(rawRules) {
+  if (!Array.isArray(rawRules)) {
+    return [];
+  }
+
+  const result = [];
+  const seen = new Set();
+  for (const item of rawRules) {
+    const rule = normalizeDomainRule(item);
+    if (!rule || seen.has(rule)) {
+      continue;
+    }
+    seen.add(rule);
+    result.push(rule);
+  }
+  return result;
+}
+
+function isEmailMatchedByRules(rawEmail, rules) {
+  if (typeof rawEmail !== 'string') {
+    return false;
+  }
+
+  const normalizedEmail = rawEmail.trim().toLowerCase();
+  const match = normalizedEmail.match(/^[^\s@]+@([^\s@]+)$/);
+  if (!match) {
+    return false;
+  }
+
+  const emailDomain = normalizeDomainRule(match[1]);
+  if (!emailDomain) {
+    return false;
+  }
+
+  for (const rule of rules) {
+    if (rule === emailDomain) {
+      return true;
+    }
+
+    if (rule.startsWith('*.')) {
+      const suffix = rule.slice(1); // ".edu.cn"
+      if (emailDomain.endsWith(suffix) && emailDomain.length > suffix.length) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function resolvePrimaryDomain(rules) {
+  const exactRule = rules.find((item) => !item.startsWith('*.'));
+  if (exactRule) {
+    return exactRule;
+  }
+
+  const wildcardRule = rules.find((item) => item.startsWith('*.'));
+  if (wildcardRule) {
+    return `your.${wildcardRule.slice(2)}`;
+  }
+
+  return 'szu.edu.cn';
+}
+
 function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -20,22 +110,16 @@ function Auth() {
   const allowedDomains = Array.isArray(siteConfig.allowed_email_domains) && siteConfig.allowed_email_domains.length > 0
     ? siteConfig.allowed_email_domains
     : ['szu.edu.cn'];
+  const allowedDomainRules = normalizeAllowedDomainRules(allowedDomains);
+  const isLogin = authMode === 'login';
+  const isRegister = authMode === 'register';
+  const isResetPassword = authMode === 'reset';
 
-  const primaryDomain = allowedDomains[0];
-  const domainHint = allowedDomains.map((item) => `@${item}`).join('、');
+  const primaryDomain = resolvePrimaryDomain(allowedDomainRules);
+  const domainHint = allowedDomainRules.map((item) => `@${item}`).join('、');
 
   const isAllowedEmail = (rawEmail) => {
-    if (typeof rawEmail !== 'string') {
-      return false;
-    }
-
-    const normalized = rawEmail.trim().toLowerCase();
-    const match = normalized.match(/^[^\s@]+@([^\s@]+)$/);
-    if (!match) {
-      return false;
-    }
-
-    return allowedDomains.includes(match[1]);
+    return isEmailMatchedByRules(rawEmail, allowedDomainRules);
   };
 
   const handleSendCode = async () => {
@@ -46,8 +130,9 @@ function Auth() {
 
     setCodeLoading(true);
     try {
-      await api.post('/auth/send-code', { email: email.trim().toLowerCase() });
-      toast.success('验证码已发送，请查收邮箱', { duration: 4000 });
+      const endpoint = isResetPassword ? '/auth/forgot-password/send-code' : '/auth/send-code';
+      await api.post(endpoint, { email: email.trim().toLowerCase() });
+      toast.success(isResetPassword ? '重置验证码已发送，请查收邮箱' : '验证码已发送，请查收邮箱', { duration: 4000 });
     } catch {
       // handled by interceptor
     } finally {
@@ -69,14 +154,25 @@ function Auth() {
         setIsAdmin(Boolean(res.data.data.is_admin));
         toast.success(res.data.msg);
         navigate('/survey', { replace: true });
-      } else {
+      } else if (isRegister) {
         await api.post('/auth/register', {
           email: email.trim().toLowerCase(),
           password,
           code
         });
         toast.success('注册成功，请登录');
-        setIsLogin(true);
+        setAuthMode('login');
+        setCode('');
+      } else {
+        await api.post('/auth/forgot-password/reset', {
+          email: email.trim().toLowerCase(),
+          password,
+          code
+        });
+        toast.success('密码重置成功，请使用新密码登录');
+        setAuthMode('login');
+        setCode('');
+        setPassword('');
       }
     } catch {
       // handled by interceptor
@@ -96,7 +192,9 @@ function Auth() {
         className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-szured/10 w-full max-w-md p-8 border border-white"
       >
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-extrabold text-slate-800 mb-2">{isLogin ? '欢迎回来' : `加入 ${siteConfig.brand_name}`}</h2>
+          <h2 className="text-3xl font-extrabold text-slate-800 mb-2">
+            {isLogin ? '欢迎回来' : isRegister ? `加入 ${siteConfig.brand_name}` : '找回密码'}
+          </h2>
           <p className="text-slate-500 text-sm">校园专属灵魂契合平台</p>
         </div>
 
@@ -139,7 +237,7 @@ function Auth() {
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">密码</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">{isResetPassword ? '新密码' : '密码'}</label>
             <input
               type="password"
               required
@@ -156,17 +254,37 @@ function Auth() {
             disabled={loading}
             className="w-full py-3 bg-szured hover:bg-szuredDark text-white rounded-xl font-bold shadow-lg shadow-szured/20 transition flex justify-center items-center disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? '登录' : '注册')}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? '登录' : isRegister ? '注册' : '重置密码')}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-slate-500 hover:text-szured font-semibold transition cursor-pointer bg-transparent border-none"
-          >
-            {isLogin ? '没有账号？点击注册' : '已有账号？直接登录'}
-          </button>
+        <div className="mt-6 text-center space-y-2">
+          {isLogin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setAuthMode('register')}
+                className="text-sm text-slate-500 hover:text-szured font-semibold transition cursor-pointer bg-transparent border-none block w-full"
+              >
+                没有账号？点击注册
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode('reset')}
+                className="text-sm text-slate-500 hover:text-szured font-semibold transition cursor-pointer bg-transparent border-none block w-full"
+              >
+                忘记密码？
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAuthMode('login')}
+              className="text-sm text-slate-500 hover:text-szured font-semibold transition cursor-pointer bg-transparent border-none"
+            >
+              返回登录
+            </button>
+          )}
         </div>
       </motion.div>
     </div>

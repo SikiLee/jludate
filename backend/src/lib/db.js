@@ -2,6 +2,8 @@ import { Pool } from 'pg';
 import { seedInterpretationsIfEmpty } from 'lib/typeInterpretation';
 import { seedSurveyQuestionsIfEmpty } from 'lib/surveyQuestionConfig';
 import { seedDefaultSiteSettings } from 'lib/siteConfig';
+import { buildEncryptedEmailPayload, normalizeEmail } from 'lib/identityLink';
+import { hashPassword } from 'lib/password';
 import { assertPrivacyConfig } from 'lib/privacy';
 
 const DEFAULT_IDENTITY_DB_URL = 'postgresql://user:password@localhost:5432/identity_db';
@@ -26,6 +28,11 @@ const SURVEY_ADMIN_DATABASE_URL = toDatabaseUrl(
 );
 const INACTIVE_PASSWORD_PLACEHOLDER_HASH = process.env.INACTIVE_PASSWORD_PLACEHOLDER_HASH
   || '$2a$12$1JW0irfGiqgrg7c1FLRk4.bmJswowkJmG5J5x9vpCu5NrrTFjjR/C';
+const ENABLE_DEFAULT_USERS_BOOTSTRAP = process.env.ENABLE_DEFAULT_USERS_BOOTSTRAP === 'true';
+const DEFAULT_ADMIN_EMAIL = process.env.DEFAULT_ADMIN_EMAIL || '';
+const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || '';
+const DEFAULT_USER_EMAIL = process.env.DEFAULT_USER_EMAIL || '';
+const DEFAULT_USER_PASSWORD = process.env.DEFAULT_USER_PASSWORD || '';
 
 const identityPool = new Pool({
   connectionString: IDENTITY_DATABASE_URL
@@ -254,6 +261,7 @@ async function ensureIdentitySchema() {
       verification_code VARCHAR(16),
       gender VARCHAR(16),
       target_gender VARCHAR(16),
+      allow_cross_school_match BOOLEAN NOT NULL DEFAULT FALSE,
       orientation VARCHAR(32),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -287,9 +295,13 @@ async function ensureIdentitySchema() {
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS email_key_version VARCHAR(32)');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS gender VARCHAR(16)');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS target_gender VARCHAR(16)');
+  await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS allow_cross_school_match BOOLEAN NOT NULL DEFAULT FALSE');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS orientation VARCHAR(32)');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+  await identityAdminPool.query('UPDATE unidate_app.users SET allow_cross_school_match = FALSE WHERE allow_cross_school_match IS NULL');
+  await identityAdminPool.query('ALTER TABLE unidate_app.users ALTER COLUMN allow_cross_school_match SET DEFAULT FALSE');
+  await identityAdminPool.query('ALTER TABLE unidate_app.users ALTER COLUMN allow_cross_school_match SET NOT NULL');
 
   await identityAdminPool.query('ALTER TABLE unidate_app.users ALTER COLUMN email DROP NOT NULL');
   await identityAdminPool.query(
@@ -365,7 +377,16 @@ async function ensureSurveySchema() {
       final_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0,
       user1_rose_code VARCHAR(8),
       user2_rose_code VARCHAR(8),
-      killer_point TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.match_messages (
+      id SERIAL PRIMARY KEY,
+      match_result_id INTEGER NOT NULL REFERENCES unidate_app.match_results(id) ON DELETE CASCADE,
+      sender_respondent_id VARCHAR(64) NOT NULL,
+      message_text TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
@@ -420,6 +441,19 @@ async function ensureSurveySchema() {
     )
   `);
 
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.user_feedback (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      is_guest BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(32) NOT NULL DEFAULT 'other',
+      rose_code VARCHAR(32),
+      content TEXT NOT NULL,
+      contact_email VARCHAR(255),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_responses ADD COLUMN IF NOT EXISTS respondent_id VARCHAR(64)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_responses ADD COLUMN IF NOT EXISTS rose_code VARCHAR(8)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_responses ADD COLUMN IF NOT EXISTS rose_name VARCHAR(128)');
@@ -434,7 +468,11 @@ async function ensureSurveySchema() {
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS final_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0');
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS user1_rose_code VARCHAR(8)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS user2_rose_code VARCHAR(8)');
-  await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS killer_point TEXT');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.match_results DROP COLUMN IF EXISTS killer_point');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.match_messages ADD COLUMN IF NOT EXISTS match_result_id INTEGER REFERENCES unidate_app.match_results(id) ON DELETE CASCADE');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.match_messages ADD COLUMN IF NOT EXISTS sender_respondent_id VARCHAR(64)');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.match_messages ADD COLUMN IF NOT EXISTS message_text TEXT');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.match_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
 
   await surveyAdminPool.query('ALTER TABLE unidate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS rose_name VARCHAR(128)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.rose_type_interpretations ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE');
@@ -447,6 +485,14 @@ async function ensureSurveySchema() {
     SET updated_at = COALESCE(updated_at, NOW())
     WHERE updated_at IS NULL
   `);
+
+  await surveyAdminPool.query('ALTER TABLE unidate_app.user_feedback ADD COLUMN IF NOT EXISTS user_id INTEGER');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.user_feedback ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT TRUE');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.user_feedback ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT \'other\'');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.user_feedback ADD COLUMN IF NOT EXISTS rose_code VARCHAR(32)');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.user_feedback ADD COLUMN IF NOT EXISTS content TEXT');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.user_feedback ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255)');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.user_feedback ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
 
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_questions ADD COLUMN IF NOT EXISTS section_title VARCHAR(128)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_questions ADD COLUMN IF NOT EXISTS question_text TEXT');
@@ -472,11 +518,15 @@ async function ensureSurveySchema() {
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_run_id ON unidate_app.match_results(run_id)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent1 ON unidate_app.match_results(respondent1_id)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent2 ON unidate_app.match_results(respondent2_id)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_messages_match_result_id ON unidate_app.match_messages(match_result_id, id)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_messages_sender ON unidate_app.match_messages(sender_respondent_id)');
   await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_rose_type_interpretations_code ON unidate_app.rose_type_interpretations(rose_code)');
   await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_survey_questions_number ON unidate_app.survey_questions(question_number)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_survey_questions_order ON unidate_app.survey_questions(display_order)');
   await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_key ON unidate_app.site_settings(setting_key)');
   await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_site_assets_key ON unidate_app.site_assets(asset_key)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_user_feedback_created_at ON unidate_app.user_feedback(created_at DESC)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON unidate_app.user_feedback(user_id)');
   await surveyAdminPool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_match_results_unique_pair_per_run
     ON unidate_app.match_results(
@@ -496,12 +546,177 @@ async function seedSurveyData() {
   await seedDefaultSiteSettings(surveyAdminPool);
 }
 
+async function ensureDefaultAdminUser() {
+  if (!ENABLE_DEFAULT_USERS_BOOTSTRAP) {
+    return;
+  }
+
+  const adminEmail = normalizeEmail(DEFAULT_ADMIN_EMAIL);
+  const adminPassword = typeof DEFAULT_ADMIN_PASSWORD === 'string' ? DEFAULT_ADMIN_PASSWORD : '';
+
+  if (!adminEmail || !adminPassword.trim()) {
+    throw new Error('DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD are required when ENABLE_DEFAULT_USERS_BOOTSTRAP=true');
+  }
+
+  const encryptedEmail = buildEncryptedEmailPayload(adminEmail);
+  const hashedPassword = await hashPassword(adminPassword);
+  const existingUserResult = await identityAdminPool.query(
+    `
+    SELECT id
+    FROM unidate_app.users
+    WHERE email_hash = $1 OR email = $2
+    ORDER BY CASE WHEN email_hash = $1 THEN 0 ELSE 1 END ASC
+    LIMIT 1
+    `,
+    [encryptedEmail.email_hash, adminEmail]
+  );
+
+  if (existingUserResult.rowCount > 0) {
+    await identityAdminPool.query(
+      `
+      UPDATE unidate_app.users
+      SET email = NULL,
+          email_ciphertext = $1,
+          email_hash = $2,
+          email_key_version = $3,
+          hashed_password = CASE
+            WHEN COALESCE(BTRIM(hashed_password), '') = '' OR hashed_password = $6 THEN $4
+            ELSE hashed_password
+          END,
+          is_active = TRUE,
+          is_admin = TRUE,
+          verification_code = NULL
+      WHERE id = $5
+      `,
+      [
+        encryptedEmail.email_ciphertext,
+        encryptedEmail.email_hash,
+        encryptedEmail.email_key_version,
+        hashedPassword,
+        existingUserResult.rows[0].id,
+        INACTIVE_PASSWORD_PLACEHOLDER_HASH
+      ]
+    );
+    return;
+  }
+
+  await identityAdminPool.query(
+    `
+    INSERT INTO unidate_app.users(
+      email,
+      email_ciphertext,
+      email_hash,
+      email_key_version,
+      hashed_password,
+      is_active,
+      is_admin,
+      verification_code
+    )
+    VALUES ($1, $2, $3, $4, $5, TRUE, TRUE, NULL)
+    `,
+    [
+      null,
+      encryptedEmail.email_ciphertext,
+      encryptedEmail.email_hash,
+      encryptedEmail.email_key_version,
+      hashedPassword
+    ]
+  );
+}
+
+async function ensureDefaultNormalUser() {
+  if (!ENABLE_DEFAULT_USERS_BOOTSTRAP) {
+    return;
+  }
+
+  const userEmail = normalizeEmail(DEFAULT_USER_EMAIL);
+  const userPassword = typeof DEFAULT_USER_PASSWORD === 'string' ? DEFAULT_USER_PASSWORD : '';
+  const adminEmail = normalizeEmail(DEFAULT_ADMIN_EMAIL);
+
+  if (!userEmail || !userPassword.trim()) {
+    throw new Error('DEFAULT_USER_EMAIL and DEFAULT_USER_PASSWORD are required when ENABLE_DEFAULT_USERS_BOOTSTRAP=true');
+  }
+
+  if (userEmail === adminEmail) {
+    throw new Error('DEFAULT_USER_EMAIL must differ from DEFAULT_ADMIN_EMAIL');
+  }
+
+  const encryptedEmail = buildEncryptedEmailPayload(userEmail);
+  const hashedPassword = await hashPassword(userPassword);
+  const existingUserResult = await identityAdminPool.query(
+    `
+    SELECT id
+    FROM unidate_app.users
+    WHERE email_hash = $1 OR email = $2
+    ORDER BY CASE WHEN email_hash = $1 THEN 0 ELSE 1 END ASC
+    LIMIT 1
+    `,
+    [encryptedEmail.email_hash, userEmail]
+  );
+
+  if (existingUserResult.rowCount > 0) {
+    await identityAdminPool.query(
+      `
+      UPDATE unidate_app.users
+      SET email = NULL,
+          email_ciphertext = $1,
+          email_hash = $2,
+          email_key_version = $3,
+          hashed_password = CASE
+            WHEN COALESCE(BTRIM(hashed_password), '') = '' OR hashed_password = $6 THEN $4
+            ELSE hashed_password
+          END,
+          is_active = TRUE,
+          is_admin = FALSE,
+          verification_code = NULL
+      WHERE id = $5
+      `,
+      [
+        encryptedEmail.email_ciphertext,
+        encryptedEmail.email_hash,
+        encryptedEmail.email_key_version,
+        hashedPassword,
+        existingUserResult.rows[0].id,
+        INACTIVE_PASSWORD_PLACEHOLDER_HASH
+      ]
+    );
+    return;
+  }
+
+  await identityAdminPool.query(
+    `
+    INSERT INTO unidate_app.users(
+      email,
+      email_ciphertext,
+      email_hash,
+      email_key_version,
+      hashed_password,
+      is_active,
+      is_admin,
+      verification_code
+    )
+    VALUES ($1, $2, $3, $4, $5, TRUE, FALSE, NULL)
+    `,
+    [
+      null,
+      encryptedEmail.email_ciphertext,
+      encryptedEmail.email_hash,
+      encryptedEmail.email_key_version,
+      hashedPassword
+    ]
+  );
+}
+
 export async function ensureSchema() {
   if (!schemaPromise) {
     schemaPromise = (async () => {
       assertPrivacyConfig();
       await ensureDatabasesExist();
       await ensureIdentitySchema();
+      if (ENABLE_DEFAULT_USERS_BOOTSTRAP) {
+        await ensureDefaultAdminUser();
+        await ensureDefaultNormalUser();
+      }
       await ensureSurveySchema();
       await seedSurveyData();
     })().catch((error) => {

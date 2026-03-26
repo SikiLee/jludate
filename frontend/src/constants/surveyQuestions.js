@@ -1,15 +1,5 @@
 export const SCORE_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 
-export const SCORE_LABELS = {
-  1: '大粉心',
-  2: '中粉心',
-  3: '小粉心',
-  4: '灰心',
-  5: '小蓝心',
-  6: '中蓝心',
-  7: '大蓝心'
-};
-
 export const SURVEY_SECTIONS = [
   {
     title: '第一部分：核心价值观与底层逻辑',

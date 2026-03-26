@@ -12,7 +12,12 @@ function Home() {
   const [metrics, setMetrics] = useState({
     registered_users: null,
     survey_completion_rate: null,
-    matched_users: null
+    matched_users: null,
+    metric_visibility: {
+      registered_users: true,
+      survey_completion_rate: true,
+      matched_users: true
+    }
   });
   const [countdownDeadlineMs, setCountdownDeadlineMs] = useState(null);
   const brandName = siteConfig.brand_name || 'unidate';
@@ -22,10 +27,20 @@ function Home() {
   const domainText = allowedDomains.map((item) => `@${item}`).join(' / ');
   const homeHeroBackgroundUrl = siteConfig.home_hero_background_url;
   const isLoggedIn = Boolean(getAccessToken());
-  const joinTarget = isLoggedIn ? '/survey' : '/auth';
-  const joinLabel = isLoggedIn ? '进入测试' : '立即加入';
+  const joinTarget = '/survey';
+  const joinLabel = isLoggedIn ? '进入测试' : '先测类型';
+  const matchSchedule = siteConfig.match_schedule && typeof siteConfig.match_schedule === 'object'
+    ? siteConfig.match_schedule
+    : { day_of_week: 2, hour: 21, minute: 0 };
+  const scheduleDay = Number.isInteger(matchSchedule.day_of_week) ? matchSchedule.day_of_week : 2;
+  const scheduleHour = Number.isInteger(matchSchedule.hour) ? matchSchedule.hour : 21;
+  const scheduleMinute = Number.isInteger(matchSchedule.minute) ? matchSchedule.minute : 0;
+  const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const weekdayLabel = weekdayNames[scheduleDay] || '周二';
+  const scheduleTimeLabel = `${String(scheduleHour).padStart(2, '0')}:${String(scheduleMinute).padStart(2, '0')}`;
+  const scheduleRevealLabel = `${weekdayLabel} ${scheduleTimeLabel}`;
 
-  // Countdown timer logic (Next Tuesday 9 PM)
+  // Countdown timer logic (configured weekly schedule)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
@@ -35,10 +50,14 @@ function Home() {
         diff = Math.max(0, countdownDeadlineMs - Date.now());
       } else {
         const now = new Date();
-        const nextTuesday = new Date();
-        nextTuesday.setDate(now.getDate() + ((2 + 7 - now.getDay()) % 7 || 7));
-        nextTuesday.setHours(21, 0, 0, 0);
-        diff = Math.max(0, nextTuesday - now);
+        const nextSchedule = new Date(now);
+        const daysUntil = (scheduleDay - now.getDay() + 7) % 7;
+        nextSchedule.setDate(now.getDate() + daysUntil);
+        nextSchedule.setHours(scheduleHour, scheduleMinute, 0, 0);
+        if (daysUntil === 0 && now >= nextSchedule) {
+          nextSchedule.setDate(nextSchedule.getDate() + 7);
+        }
+        diff = Math.max(0, nextSchedule - now);
       }
 
       if (diff > 0) {
@@ -53,7 +72,7 @@ function Home() {
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [countdownDeadlineMs]);
+  }, [countdownDeadlineMs, scheduleDay, scheduleHour, scheduleMinute]);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,10 +87,21 @@ function Home() {
         }
 
         const data = payload?.data || {};
+        const metricVisibilityRaw = data.metric_visibility && typeof data.metric_visibility === 'object'
+          ? data.metric_visibility
+          : {};
+        const metricVisibility = {
+          registered_users: typeof metricVisibilityRaw.registered_users === 'boolean' ? metricVisibilityRaw.registered_users : true,
+          survey_completion_rate: typeof metricVisibilityRaw.survey_completion_rate === 'boolean' ? metricVisibilityRaw.survey_completion_rate : true,
+          matched_users: typeof metricVisibilityRaw.matched_users === 'boolean' ? metricVisibilityRaw.matched_users : true
+        };
         setMetrics({
-          registered_users: Number.isFinite(data.registered_users) ? data.registered_users : 0,
-          survey_completion_rate: Number.isFinite(data.survey_completion_rate) ? data.survey_completion_rate : 0,
-          matched_users: Number.isFinite(data.matched_users) ? data.matched_users : 0
+          registered_users: metricVisibility.registered_users && Number.isFinite(data.registered_users) ? data.registered_users : null,
+          survey_completion_rate: metricVisibility.survey_completion_rate && Number.isFinite(data.survey_completion_rate)
+            ? data.survey_completion_rate
+            : null,
+          matched_users: metricVisibility.matched_users && Number.isFinite(data.matched_users) ? data.matched_users : null,
+          metric_visibility: metricVisibility
         });
 
         if (Number.isFinite(data.next_match_in_seconds) && data.next_match_in_seconds >= 0) {
@@ -98,6 +128,10 @@ function Home() {
   const matchedUsersText = metrics.matched_users === null
     ? '--'
     : numberFormatter.format(metrics.matched_users);
+  const showRegisteredUsersMetric = Boolean(metrics.metric_visibility?.registered_users);
+  const showCompletionRateMetric = Boolean(metrics.metric_visibility?.survey_completion_rate);
+  const showMatchedUsersMetric = Boolean(metrics.metric_visibility?.matched_users);
+  const showAnyMetric = showRegisteredUsersMetric || showCompletionRateMetric || showMatchedUsersMetric;
 
   const applySiteTokens = (text) => {
     if (typeof text !== 'string') {
@@ -191,13 +225,19 @@ function Home() {
             让一段缘分<br />值得等待。
           </h1>
           <p className="text-lg md:text-xl mb-12 font-light text-white/90 max-w-2xl mx-auto leading-relaxed">
-            只需填写一份深度问卷，每周二晚九点，您将收到匹配结果，<br className="hidden md:block"/>并附上我们认为你们会合拍的理由。
+            只需填写一份深度问卷，每{scheduleRevealLabel}，您将收到匹配结果，<br className="hidden md:block"/>并附上我们认为你们会合拍的理由。
           </p>
           <button 
             onClick={() => navigate(joinTarget)}
             className="px-8 py-4 bg-white text-szured font-bold rounded-full hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transform hover:-translate-y-1 text-lg"
           >
             {joinLabel}
+          </button>
+          <button
+            onClick={() => navigate('/feedback?from=banner')}
+            className="mt-4 text-sm text-white/85 hover:text-white underline underline-offset-4 transition"
+          >
+            遇到问题或有建议？点此反馈
           </button>
         </motion.div>
       </section>
@@ -214,20 +254,28 @@ function Home() {
               <div>{String(timeLeft.seconds).padStart(2, '0')}<span className="text-sm block text-gray-400 font-sans tracking-normal mt-1">秒</span></div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-gray-100 text-center">
-            <div className="pt-8 md:pt-0">
-              <div className="text-4xl font-bold text-gray-900 mb-2">{registeredUsersText}</div>
-              <div className="text-gray-500 font-medium">已注册用户</div>
+          {showAnyMetric ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+              {showRegisteredUsersMetric ? (
+                <div className="pt-8 md:pt-0">
+                  <div className="text-4xl font-bold text-gray-900 mb-2">{registeredUsersText}</div>
+                  <div className="text-gray-500 font-medium">已注册用户</div>
+                </div>
+              ) : null}
+              {showCompletionRateMetric ? (
+                <div className="pt-8 md:pt-0">
+                  <div className="text-4xl font-bold text-gray-900 mb-2">{completionRateText}</div>
+                  <div className="text-gray-500 font-medium">问卷完成率</div>
+                </div>
+              ) : null}
+              {showMatchedUsersMetric ? (
+                <div className="pt-8 md:pt-0">
+                  <div className="text-4xl font-bold text-gray-900 mb-2">{matchedUsersText}</div>
+                  <div className="text-gray-500 font-medium">成功配对人数</div>
+                </div>
+              ) : null}
             </div>
-            <div className="pt-8 md:pt-0">
-              <div className="text-4xl font-bold text-gray-900 mb-2">{completionRateText}</div>
-              <div className="text-gray-500 font-medium">问卷完成率</div>
-            </div>
-            <div className="pt-8 md:pt-0">
-              <div className="text-4xl font-bold text-gray-900 mb-2">{matchedUsersText}</div>
-              <div className="text-gray-500 font-medium">成功配对人数</div>
-            </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
@@ -238,7 +286,7 @@ function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', title: '填写深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法为您找到最契合的人。' },
-              { num: '02', title: '每周二晚九点，打开信封', desc: '收到对方的昵称、匹配度，以及合拍理由。点击「联系 TA」，我们将为您向对方发送简短的讯息。' },
+              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到对方的昵称、匹配度，以及合拍理由。点击「联系 TA」，我们将为您向对方发送简短的讯息。' },
               { num: '03', title: '去见见 TA 吧！', desc: '剩下的交给你们自己，或许你们可以见面、散步、聊天，当然，一起约图也可以。' }
             ].map((step, idx) => (
               <motion.div key={idx} whileHover={{ y: -10 }} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
@@ -310,7 +358,7 @@ function Home() {
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-szured via-slate-900 to-slate-900"></div>
         <div className="relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">准备好了吗？</h2>
-          <p className="text-xl text-gray-400 mb-10 font-light">每周二晚九点，为你揭晓最契合的 TA。</p>
+          <p className="text-xl text-gray-400 mb-10 font-light">每{scheduleRevealLabel}，为你揭晓最契合的 TA。</p>
           <button 
             onClick={() => navigate(joinTarget)}
             className="px-10 py-5 bg-szured text-white font-bold rounded-full hover:bg-[#a61a44] transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(138,21,56,0.4)] text-lg"

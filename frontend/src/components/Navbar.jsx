@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Mail, LogOut } from 'lucide-react';
+import { Mail, LogOut, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clearAuthStorage, getAccessToken, getIsAdmin } from '../lib/storage';
 import { useSiteConfig } from '../context/SiteConfigContext';
@@ -10,6 +10,8 @@ function Navbar() {
   const navigate = useNavigate();
   const { siteConfig } = useSiteConfig();
   const [scrolled, setScrolled] = useState(false);
+  const [roseMenuOpen, setRoseMenuOpen] = useState(false);
+  const roseMenuRef = useRef(null);
   const [, setAuthVersion] = useState(0);
   const token = getAccessToken();
   const isAdmin = getIsAdmin();
@@ -44,6 +46,28 @@ function Navbar() {
     setAuthVersion((value) => value + 1);
   }, [location.pathname]);
 
+  useEffect(() => {
+    setRoseMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!roseMenuRef.current) {
+        return;
+      }
+      if (!roseMenuRef.current.contains(event.target)) {
+        setRoseMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      window.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
+
   const handleLogout = () => {
     clearAuthStorage();
     navigate('/');
@@ -70,14 +94,18 @@ function Navbar() {
 
   // Build the dynamic nav links (like Match, Survey, Admin) 
   // We'll keep them understated if the user is just browsing the transparent hero.
+  const commonLinks = [{ path: '/feedback', label: '反馈' }];
   const authLinks = [];
   if (token) {
-    authLinks.push({ path: '/survey', label: '专属测试' });
     authLinks.push({ path: '/match', label: '心动匹配' });
     if (isAdmin) {
       authLinks.push({ path: '/admin', label: '后台' });
     }
   }
+  const isRoseMenuActive = location.pathname.startsWith('/survey') || location.pathname.startsWith('/rose');
+  const roseMenuButtonClass = `text-sm sm:text-[15px] transition-colors tracking-wide inline-flex items-center gap-1 ${
+    isRoseMenuActive ? (isTransparent ? 'text-white font-bold' : 'text-slate-900 font-bold') : textColor
+  }`;
 
   return (
     <motion.nav
@@ -103,6 +131,51 @@ function Navbar() {
             <Link to="/" className={`text-sm sm:text-[15px] font-medium tracking-wide transition-colors ${textColor}`}>
               关于
             </Link>
+
+            {commonLinks.map((link) => {
+              const isActive = location.pathname.startsWith(link.path);
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`text-sm sm:text-[15px] transition-colors tracking-wide ${
+                    isActive ? (isTransparent ? 'text-white font-bold' : 'text-slate-900 font-bold') : textColor
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+
+            <div className="relative" ref={roseMenuRef}>
+              <button
+                type="button"
+                onClick={() => setRoseMenuOpen((prev) => !prev)}
+                className={roseMenuButtonClass}
+              >
+                ROSE恋爱人格
+                <ChevronDown className={`w-4 h-4 transition-transform ${roseMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {roseMenuOpen ? (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-52 rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 p-2 z-50">
+                  <Link
+                    to="/survey?mode=test"
+                    onClick={() => setRoseMenuOpen(false)}
+                    className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    ①测试ROSE人格
+                  </Link>
+                  <Link
+                    to="/rose"
+                    onClick={() => setRoseMenuOpen(false)}
+                    className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    ②查看ROSE恋爱人格
+                  </Link>
+                </div>
+              ) : null}
+            </div>
 
             {authLinks.map((link) => {
               const isActive = location.pathname.startsWith(link.path);

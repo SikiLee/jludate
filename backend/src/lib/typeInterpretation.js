@@ -311,6 +311,24 @@ export async function listTypeInterpretations(db) {
   return result.rows;
 }
 
+export async function listPublicTypeInterpretations(db) {
+  const result = await db.query(
+    `
+    SELECT rose_code, rose_name, markdown_content, updated_at
+    FROM unidate_app.rose_type_interpretations
+    WHERE enabled = TRUE
+    ORDER BY rose_code ASC
+    `
+  );
+
+  return result.rows.map((row) => ({
+    rose_code: row.rose_code,
+    rose_name: row.rose_name,
+    summary: extractSummaryFromMarkdown(row.markdown_content),
+    updated_at: row.updated_at
+  }));
+}
+
 export async function getTypeInterpretationForAdmin(db, roseCodeInput) {
   const roseCode = normalizeRoseCode(roseCodeInput);
   if (!roseCode) {

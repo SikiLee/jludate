@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutTemplate, Settings2, Globe } from 'lucide-react';
+import { LayoutTemplate, Settings2, Globe, MessageSquareText } from 'lucide-react';
 import AdminRoseTypes from './AdminRoseTypes';
 import AdminSurveyQuestions from './AdminSurveyQuestions';
 import AdminSiteSettings from './AdminSiteSettings';
+import AdminFeedback from './AdminFeedback';
 
 function Admin() {
-  const [activeTab, setActiveTab] = useState('rose');
+  const [activeTab, setActiveTab] = useState('site');
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 font-sans">
@@ -66,6 +67,24 @@ function Admin() {
             <Settings2 className="w-5 h-5 relative z-10" />
             <span className="relative z-10">问卷题目配置</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`relative px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 z-10 ${
+              activeTab === 'feedback' ? 'text-amber-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
+            }`}
+          >
+            {activeTab === 'feedback' && (
+              <motion.div
+                layoutId="admin-tab-bg"
+                className="absolute inset-0 bg-amber-50/90 rounded-xl"
+                initial={false}
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <MessageSquareText className="w-5 h-5 relative z-10" />
+            <span className="relative z-10">用户反馈</span>
+          </button>
         </div>
       </div>
 
@@ -102,6 +121,17 @@ function Admin() {
               transition={{ duration: 0.2 }}
             >
               <AdminSurveyQuestions />
+            </motion.div>
+          )}
+          {activeTab === 'feedback' && (
+            <motion.div
+              key="feedback"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AdminFeedback />
             </motion.div>
           )}
         </AnimatePresence>

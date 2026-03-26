@@ -1,12 +1,11 @@
 import { ensureSchema, identityPool, surveyPool } from 'lib/db';
 import { listActiveIdentityProfilesForMatching } from 'lib/identityLink';
 import {
-  buildRarityMap,
   computeMatchScore,
-  computeRoseProfile,
-  pickKillerPoint
+  computeRoseProfile
 } from 'lib/rose';
 import { sendMatchEmail } from 'lib/email';
+import { getCrossSchoolMatchingEnabled } from 'lib/siteConfig';
 
 function getShanghaiWallDate(date = new Date()) {
   return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
@@ -44,6 +43,30 @@ function buildRunKey(runType, customRunKey) {
   return `manual-${Date.now()}`;
 }
 
+function extractSchoolDomainKey(email) {
+  if (typeof email !== 'string') {
+    return '';
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const match = normalizedEmail.match(/^[^\s@]+@([^\s@]+)$/);
+  if (!match) {
+    return '';
+  }
+
+  const domain = match[1];
+  const parts = domain.split('.').filter(Boolean);
+  if (
+    parts.length >= 3
+    && parts[parts.length - 2] === 'edu'
+    && parts[parts.length - 1] === 'cn'
+  ) {
+    return parts.slice(-3).join('.');
+  }
+
+  return domain;
+}
+
 function toCandidate(identityProfile, answers) {
   const roseResult = computeRoseProfile(answers);
   if (!roseResult.ok) {
@@ -56,7 +79,9 @@ function toCandidate(identityProfile, answers) {
     email: identityProfile.email,
     gender: identityProfile.gender,
     target_gender: identityProfile.target_gender,
+    allow_cross_school_match: Boolean(identityProfile.allow_cross_school_match),
     orientation: identityProfile.orientation,
+    school_domain: extractSchoolDomainKey(identityProfile.email),
     answers: roseResult.profile.answers,
     rose: {
       dimension_scores: roseResult.profile.dimension_scores,
@@ -67,13 +92,34 @@ function toCandidate(identityProfile, answers) {
   };
 }
 
-function buildPairEdges(candidates) {
+function isSchoolPairAllowed(left, right, { crossSchoolEnabled }) {
+  const isSameSchool = Boolean(
+    left.school_domain
+    && right.school_domain
+    && left.school_domain === right.school_domain
+  );
+  if (isSameSchool) {
+    return true;
+  }
+
+  if (!crossSchoolEnabled) {
+    return false;
+  }
+
+  return Boolean(left.allow_cross_school_match) && Boolean(right.allow_cross_school_match);
+}
+
+function buildPairEdges(candidates, { crossSchoolEnabled = false } = {}) {
   const edges = [];
 
   for (let i = 0; i < candidates.length; i += 1) {
     for (let j = i + 1; j < candidates.length; j += 1) {
       const left = candidates[i];
       const right = candidates[j];
+      if (!isSchoolPairAllowed(left, right, { crossSchoolEnabled })) {
+        continue;
+      }
+
       const score = computeMatchScore(left, right);
       if (!score.is_match) {
         continue;
@@ -124,12 +170,16 @@ function pickPairs(edges) {
 }
 
 async function loadCandidates() {
+  const crossSchoolMatchingEnabled = await getCrossSchoolMatchingEnabled(surveyPool);
   const identityProfiles = await listActiveIdentityProfilesForMatching(identityPool, {
     actor: 'system:matching',
     purpose: 'load_matching_candidates'
   });
   if (identityProfiles.length === 0) {
-    return [];
+    return {
+      candidates: [],
+      cross_school_matching_enabled: crossSchoolMatchingEnabled
+    };
   }
 
   const respondentIds = identityProfiles.map((item) => item.respondent_id);
@@ -162,7 +212,10 @@ async function loadCandidates() {
     candidates.push(candidate);
   }
 
-  return candidates;
+  return {
+    candidates,
+    cross_school_matching_enabled: crossSchoolMatchingEnabled
+  };
 }
 
 export async function runMatchingEngine({ runType = 'manual', runKey: customRunKey, initiatedBy = 'system' } = {}) {
@@ -202,7 +255,10 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
     );
 
     const runId = runInsert.rows[0].id;
-    const candidates = await loadCandidates();
+    const {
+      candidates,
+      cross_school_matching_enabled: crossSchoolMatchingEnabled
+    } = await loadCandidates();
 
     for (const candidate of candidates) {
       await client.query(
@@ -223,13 +279,11 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
       );
     }
 
-    const rarityMap = buildRarityMap(candidates);
-    const edges = buildPairEdges(candidates);
+    const edges = buildPairEdges(candidates, { crossSchoolEnabled: crossSchoolMatchingEnabled });
     const selectedPairs = pickPairs(edges);
 
     for (const pair of selectedPairs) {
       const [user1, user2] = normalizePair(pair.left, pair.right);
-      const killerPoint = pickKillerPoint(pair.left.answers, pair.right.answers, rarityMap);
 
       const insertResult = await client.query(
         `
@@ -241,10 +295,9 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
           complementary_bonus,
           final_match_percent,
           user1_rose_code,
-          user2_rose_code,
-          killer_point
+          user2_rose_code
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id, created_at
         `,
         [
@@ -255,8 +308,7 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
           pair.score.complementary_bonus,
           pair.score.final_match_percent,
           user1.rose.rose_code,
-          user2.rose.rose_code,
-          killerPoint
+          user2.rose.rose_code
         ]
       );
 
@@ -264,7 +316,6 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
       pendingEmails.push({
         left: pair.left,
         right: pair.right,
-        killerPoint,
         finalMatchPercent: pair.score.final_match_percent,
         runAt: createdAt
       });
@@ -291,7 +342,6 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
         matchPercent: emailTask.finalMatchPercent,
         selfRose: emailTask.left.rose.rose_code,
         partnerRose: emailTask.right.rose.rose_code,
-        killerPoint: emailTask.killerPoint,
         runAt: emailTask.runAt
       });
 
@@ -301,7 +351,6 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
         matchPercent: emailTask.finalMatchPercent,
         selfRose: emailTask.right.rose.rose_code,
         partnerRose: emailTask.left.rose.rose_code,
-        killerPoint: emailTask.killerPoint,
         runAt: emailTask.runAt
       });
     }

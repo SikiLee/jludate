@@ -3,8 +3,57 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { normalizeAllowedEmailDomains } from './request.js';
 
+export const SHANGHAI_TIME_ZONE = 'Asia/Shanghai';
 export const DEFAULT_BRAND_NAME = 'unidate';
-export const DEFAULT_ALLOWED_EMAIL_DOMAINS = ['szu.edu.cn'];
+const FALLBACK_ALLOWED_EMAIL_DOMAINS = Object.freeze(['szu.edu.cn']);
+
+function parseDefaultAllowedEmailDomains(rawValue) {
+  if (typeof rawValue !== 'string') {
+    return [...FALLBACK_ALLOWED_EMAIL_DOMAINS];
+  }
+
+  const text = rawValue.trim();
+  if (!text) {
+    return [...FALLBACK_ALLOWED_EMAIL_DOMAINS];
+  }
+
+  let candidateDomains = null;
+
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        candidateDomains = parsed;
+      }
+    } catch {
+      // Fallback to delimiter split below.
+    }
+  }
+
+  if (!candidateDomains) {
+    candidateDomains = text
+      .split(/[\n,，、;；\s]+/g)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  const normalized = normalizeAllowedEmailDomains(candidateDomains);
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  return [...FALLBACK_ALLOWED_EMAIL_DOMAINS];
+}
+
+export const DEFAULT_ALLOWED_EMAIL_DOMAINS = Object.freeze(
+  parseDefaultAllowedEmailDomains(process.env.DEFAULT_ALLOWED_EMAIL_DOMAINS)
+);
+export const DEFAULT_MATCH_SCHEDULE = Object.freeze({
+  day_of_week: 2,
+  hour: 21,
+  minute: 0,
+  timezone: SHANGHAI_TIME_ZONE
+});
 export const DEFAULT_FAQ_ITEMS = [
   {
     q: '使用流程是什么？',
@@ -45,24 +94,124 @@ export const DEFAULT_WHY_CHOOSE_US_ITEMS = [
     desc: '仅支持 {ALLOWED_DOMAINS} 邮箱注册。封闭纯粹的校园环境，让相认更加真实可靠。'
   }
 ];
+export const DEFAULT_HOME_METRICS_VISIBILITY = Object.freeze({
+  registered_users: true,
+  survey_completion_rate: true,
+  matched_users: true
+});
+export const DEFAULT_EMAIL_TEMPLATES = Object.freeze({
+  verification: Object.freeze({
+    subject: '{{brand_name}} Registration Verification',
+    body: '【{{brand_name}}】您的验证码是: {{code}}\n一次深度问卷，匹配一个和你最契合的人。欢迎加入校园专属配对平台！'
+  }),
+  match_result: Object.freeze({
+    subject: '【{{brand_name}}】你的本周匹配结果已送达',
+    body: [
+      '【{{brand_name}} 每周匹配】',
+      '你已成功匹配，请登录网站查看匹配详情与对话。',
+      '查看入口：{{match_url}}',
+      '派发时间：{{run_at}} ({{timezone}})'
+    ].join('\n')
+  })
+});
+export const DEFAULT_CROSS_SCHOOL_MATCHING_ENABLED = false;
 export const SITE_SETTING_KEYS = {
   BRAND_NAME: 'brand_name',
   ALLOWED_EMAIL_DOMAINS: 'allowed_email_domains',
+  MATCH_SCHEDULE: 'match_schedule',
   FAQ_ITEMS: 'faq_items',
-  WHY_CHOOSE_US_ITEMS: 'why_choose_us_items'
+  WHY_CHOOSE_US_ITEMS: 'why_choose_us_items',
+  HOME_METRICS_VISIBILITY: 'home_metrics_visibility',
+  EMAIL_TEMPLATES: 'email_templates',
+  CROSS_SCHOOL_MATCHING_ENABLED: 'cross_school_matching_enabled'
 };
 export const SITE_ASSET_KEYS = {
   HOME_HERO_BACKGROUND: 'home_hero_background'
 };
 
 const MAX_BRAND_NAME_LENGTH = 64;
-const MAX_BACKGROUND_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_EMAIL_SUBJECT_LENGTH = 200;
+const MAX_EMAIL_BODY_LENGTH = 8000;
 const IMAGE_MIME_TO_EXT = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp'
 };
 const WHY_CHOOSE_US_ICON_SET = new Set(['clock', 'target', 'shield', 'heart']);
+
+function getShanghaiWallDate(date = new Date()) {
+  return new Date(date.toLocaleString('en-US', { timeZone: SHANGHAI_TIME_ZONE }));
+}
+
+function cloneDefaultMatchSchedule() {
+  return {
+    day_of_week: DEFAULT_MATCH_SCHEDULE.day_of_week,
+    hour: DEFAULT_MATCH_SCHEDULE.hour,
+    minute: DEFAULT_MATCH_SCHEDULE.minute,
+    timezone: DEFAULT_MATCH_SCHEDULE.timezone
+  };
+}
+
+function normalizeScheduleNumber(rawValue, min, max) {
+  const number = Number(rawValue);
+  if (!Number.isInteger(number)) {
+    return null;
+  }
+
+  if (number < min || number > max) {
+    return null;
+  }
+
+  return number;
+}
+
+export function normalizeMatchSchedule(rawValue) {
+  if (!rawValue || typeof rawValue !== 'object') {
+    return null;
+  }
+
+  const dayOfWeek = normalizeScheduleNumber(rawValue.day_of_week, 0, 6);
+  const hour = normalizeScheduleNumber(rawValue.hour, 0, 23);
+  const minute = normalizeScheduleNumber(rawValue.minute, 0, 59);
+
+  if (dayOfWeek === null || hour === null || minute === null) {
+    return null;
+  }
+
+  return {
+    day_of_week: dayOfWeek,
+    hour,
+    minute,
+    timezone: SHANGHAI_TIME_ZONE
+  };
+}
+
+export function getNextMatchTimeInShanghai(schedule, date = new Date()) {
+  const normalizedSchedule = normalizeMatchSchedule(schedule) || cloneDefaultMatchSchedule();
+  const shanghaiNow = getShanghaiWallDate(date);
+  const target = new Date(shanghaiNow.getTime());
+
+  const day = shanghaiNow.getDay();
+  const daysUntil = (normalizedSchedule.day_of_week - day + 7) % 7;
+  target.setDate(target.getDate() + daysUntil);
+  target.setHours(normalizedSchedule.hour, normalizedSchedule.minute, 0, 0);
+
+  if (daysUntil === 0 && shanghaiNow >= target) {
+    target.setDate(target.getDate() + 7);
+  }
+
+  return target;
+}
+
+export function isMatchScheduleDueInShanghai(schedule, date = new Date()) {
+  const normalizedSchedule = normalizeMatchSchedule(schedule) || cloneDefaultMatchSchedule();
+  const shanghaiDate = getShanghaiWallDate(date);
+  return (
+    shanghaiDate.getDay() === normalizedSchedule.day_of_week
+    && shanghaiDate.getHours() === normalizedSchedule.hour
+    && shanghaiDate.getMinutes() === normalizedSchedule.minute
+  );
+}
 
 function normalizeBrandName(rawValue) {
   if (typeof rawValue !== 'string') {
@@ -164,6 +313,116 @@ function normalizeWhyChooseUsItems(rawValue) {
   return rows;
 }
 
+function normalizeHomeMetricsVisibility(rawValue, { strict = false } = {}) {
+  if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+    return strict
+      ? null
+      : {
+          registered_users: DEFAULT_HOME_METRICS_VISIBILITY.registered_users,
+          survey_completion_rate: DEFAULT_HOME_METRICS_VISIBILITY.survey_completion_rate,
+          matched_users: DEFAULT_HOME_METRICS_VISIBILITY.matched_users
+        };
+  }
+
+  const registeredUsers = rawValue.registered_users;
+  const surveyCompletionRate = rawValue.survey_completion_rate;
+  const matchedUsers = rawValue.matched_users;
+
+  if (
+    strict
+    && (
+      typeof registeredUsers !== 'boolean'
+      || typeof surveyCompletionRate !== 'boolean'
+      || typeof matchedUsers !== 'boolean'
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    registered_users: typeof registeredUsers === 'boolean'
+      ? registeredUsers
+      : DEFAULT_HOME_METRICS_VISIBILITY.registered_users,
+    survey_completion_rate: typeof surveyCompletionRate === 'boolean'
+      ? surveyCompletionRate
+      : DEFAULT_HOME_METRICS_VISIBILITY.survey_completion_rate,
+    matched_users: typeof matchedUsers === 'boolean'
+      ? matchedUsers
+      : DEFAULT_HOME_METRICS_VISIBILITY.matched_users
+  };
+}
+
+function normalizeCrossSchoolMatchingEnabled(rawValue, { strict = false } = {}) {
+  if (typeof rawValue === 'boolean') {
+    return rawValue;
+  }
+
+  if (strict) {
+    return null;
+  }
+
+  return DEFAULT_CROSS_SCHOOL_MATCHING_ENABLED;
+}
+
+function cloneDefaultEmailTemplates() {
+  return {
+    verification: {
+      subject: DEFAULT_EMAIL_TEMPLATES.verification.subject,
+      body: DEFAULT_EMAIL_TEMPLATES.verification.body
+    },
+    match_result: {
+      subject: DEFAULT_EMAIL_TEMPLATES.match_result.subject,
+      body: DEFAULT_EMAIL_TEMPLATES.match_result.body
+    }
+  };
+}
+
+function normalizeTemplateText(rawValue, maxLength) {
+  if (typeof rawValue !== 'string') {
+    return '';
+  }
+
+  const normalized = rawValue.replace(/\r\n/g, '\n').trim();
+  if (!normalized || normalized.length > maxLength) {
+    return '';
+  }
+
+  return normalized;
+}
+
+function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
+  if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+    return strict ? null : cloneDefaultEmailTemplates();
+  }
+
+  const verification = rawValue.verification && typeof rawValue.verification === 'object'
+    ? rawValue.verification
+    : {};
+  const matchResult = rawValue.match_result && typeof rawValue.match_result === 'object'
+    ? rawValue.match_result
+    : {};
+
+  const verificationSubject = normalizeTemplateText(verification.subject, MAX_EMAIL_SUBJECT_LENGTH);
+  const verificationBody = normalizeTemplateText(verification.body, MAX_EMAIL_BODY_LENGTH);
+  const matchResultSubject = normalizeTemplateText(matchResult.subject, MAX_EMAIL_SUBJECT_LENGTH);
+  const matchResultBody = normalizeTemplateText(matchResult.body, MAX_EMAIL_BODY_LENGTH);
+
+  if (strict && (!verificationSubject || !verificationBody || !matchResultSubject || !matchResultBody)) {
+    return null;
+  }
+
+  return {
+    verification: {
+      subject: verificationSubject || DEFAULT_EMAIL_TEMPLATES.verification.subject,
+      body: verificationBody || DEFAULT_EMAIL_TEMPLATES.verification.body
+    },
+    match_result: {
+      subject: matchResultSubject || DEFAULT_EMAIL_TEMPLATES.match_result.subject,
+      body: matchResultBody || DEFAULT_EMAIL_TEMPLATES.match_result.body
+    }
+  };
+}
+
 function resolveSiteAssetsDir() {
   const configured = process.env.SITE_ASSETS_DIR;
   if (typeof configured === 'string' && configured.trim()) {
@@ -242,13 +501,17 @@ async function getSiteSettingRows(db) {
     `
     SELECT setting_key, setting_value_json, updated_at
     FROM unidate_app.site_settings
-    WHERE setting_key IN ($1, $2, $3, $4)
+    WHERE setting_key IN ($1, $2, $3, $4, $5, $6, $7, $8)
     `,
     [
       SITE_SETTING_KEYS.BRAND_NAME,
       SITE_SETTING_KEYS.ALLOWED_EMAIL_DOMAINS,
+      SITE_SETTING_KEYS.MATCH_SCHEDULE,
       SITE_SETTING_KEYS.FAQ_ITEMS,
-      SITE_SETTING_KEYS.WHY_CHOOSE_US_ITEMS
+      SITE_SETTING_KEYS.WHY_CHOOSE_US_ITEMS,
+      SITE_SETTING_KEYS.HOME_METRICS_VISIBILITY,
+      SITE_SETTING_KEYS.EMAIL_TEMPLATES,
+      SITE_SETTING_KEYS.CROSS_SCHOOL_MATCHING_ENABLED
     ]
   );
 
@@ -281,28 +544,48 @@ async function readCoreSiteSettings(db) {
 
   const brandRow = rowMap.get(SITE_SETTING_KEYS.BRAND_NAME);
   const domainsRow = rowMap.get(SITE_SETTING_KEYS.ALLOWED_EMAIL_DOMAINS);
+  const matchScheduleRow = rowMap.get(SITE_SETTING_KEYS.MATCH_SCHEDULE);
   const faqRow = rowMap.get(SITE_SETTING_KEYS.FAQ_ITEMS);
   const whyChooseRow = rowMap.get(SITE_SETTING_KEYS.WHY_CHOOSE_US_ITEMS);
+  const homeMetricsVisibilityRow = rowMap.get(SITE_SETTING_KEYS.HOME_METRICS_VISIBILITY);
+  const emailTemplatesRow = rowMap.get(SITE_SETTING_KEYS.EMAIL_TEMPLATES);
+  const crossSchoolMatchingRow = rowMap.get(SITE_SETTING_KEYS.CROSS_SCHOOL_MATCHING_ENABLED);
 
   const brandRaw = parseSettingValueJson(brandRow?.setting_value_json);
   const domainsRaw = parseSettingValueJson(domainsRow?.setting_value_json);
+  const matchScheduleRaw = parseSettingValueJson(matchScheduleRow?.setting_value_json);
   const faqRaw = parseSettingValueJson(faqRow?.setting_value_json);
   const whyChooseRaw = parseSettingValueJson(whyChooseRow?.setting_value_json);
+  const homeMetricsVisibilityRaw = parseSettingValueJson(homeMetricsVisibilityRow?.setting_value_json);
+  const emailTemplatesRaw = parseSettingValueJson(emailTemplatesRow?.setting_value_json);
+  const crossSchoolMatchingRaw = parseSettingValueJson(crossSchoolMatchingRow?.setting_value_json);
 
   const brandName = normalizeBrandName(brandRaw) || DEFAULT_BRAND_NAME;
   const allowedEmailDomains = normalizeAllowedDomainsOrDefault(domainsRaw);
+  const matchSchedule = normalizeMatchSchedule(matchScheduleRaw) || cloneDefaultMatchSchedule();
   const faqItems = normalizeFaqItems(faqRaw);
   const whyChooseUsItems = normalizeWhyChooseUsItems(whyChooseRaw);
+  const homeMetricsVisibility = normalizeHomeMetricsVisibility(homeMetricsVisibilityRaw);
+  const emailTemplates = normalizeEmailTemplates(emailTemplatesRaw);
+  const crossSchoolMatchingEnabled = normalizeCrossSchoolMatchingEnabled(crossSchoolMatchingRaw);
 
   return {
     brand_name: brandName,
     allowed_email_domains: allowedEmailDomains,
+    match_schedule: matchSchedule,
     faq_items: faqItems.length > 0 ? faqItems : [...DEFAULT_FAQ_ITEMS],
     why_choose_us_items: whyChooseUsItems.length > 0 ? whyChooseUsItems : [...DEFAULT_WHY_CHOOSE_US_ITEMS],
+    home_metrics_visibility: homeMetricsVisibility,
+    email_templates: emailTemplates,
+    cross_school_matching_enabled: crossSchoolMatchingEnabled,
     brand_updated_at: brandRow?.updated_at || null,
     domains_updated_at: domainsRow?.updated_at || null,
+    match_schedule_updated_at: matchScheduleRow?.updated_at || null,
     faq_updated_at: faqRow?.updated_at || null,
-    why_choose_us_updated_at: whyChooseRow?.updated_at || null
+    why_choose_us_updated_at: whyChooseRow?.updated_at || null,
+    home_metrics_visibility_updated_at: homeMetricsVisibilityRow?.updated_at || null,
+    email_templates_updated_at: emailTemplatesRow?.updated_at || null,
+    cross_school_matching_updated_at: crossSchoolMatchingRow?.updated_at || null
   };
 }
 
@@ -347,6 +630,15 @@ export function validateSiteSettingsPayload(payload) {
     };
   }
 
+  const hasMatchSchedule = payload && Object.prototype.hasOwnProperty.call(payload, 'match_schedule');
+  const matchSchedule = normalizeMatchSchedule(payload?.match_schedule);
+  if (hasMatchSchedule && !matchSchedule) {
+    return {
+      ok: false,
+      msg: 'match_schedule is invalid (day_of_week:0-6, hour:0-23, minute:0-59)'
+    };
+  }
+
   const faqItems = normalizeFaqItems(payload?.faq_items);
   if (faqItems.length === 0) {
     return {
@@ -363,13 +655,44 @@ export function validateSiteSettingsPayload(payload) {
     };
   }
 
+  const hasHomeMetricsVisibility = payload && Object.prototype.hasOwnProperty.call(payload, 'home_metrics_visibility');
+  const homeMetricsVisibility = normalizeHomeMetricsVisibility(payload?.home_metrics_visibility, { strict: true });
+  if (hasHomeMetricsVisibility && !homeMetricsVisibility) {
+    return {
+      ok: false,
+      msg: 'home_metrics_visibility is invalid (registered_users/survey_completion_rate/matched_users must be boolean)'
+    };
+  }
+
+  const hasEmailTemplates = payload && Object.prototype.hasOwnProperty.call(payload, 'email_templates');
+  const emailTemplates = normalizeEmailTemplates(payload?.email_templates, { strict: true });
+  if (hasEmailTemplates && !emailTemplates) {
+    return {
+      ok: false,
+      msg: `email_templates is invalid (subject 1-${MAX_EMAIL_SUBJECT_LENGTH} chars; body 1-${MAX_EMAIL_BODY_LENGTH} chars)`
+    };
+  }
+
+  const hasCrossSchoolMatchingEnabled = payload && Object.prototype.hasOwnProperty.call(payload, 'cross_school_matching_enabled');
+  const crossSchoolMatchingEnabled = normalizeCrossSchoolMatchingEnabled(payload?.cross_school_matching_enabled, { strict: true });
+  if (hasCrossSchoolMatchingEnabled && crossSchoolMatchingEnabled === null) {
+    return {
+      ok: false,
+      msg: 'cross_school_matching_enabled must be boolean'
+    };
+  }
+
   return {
     ok: true,
     data: {
       brand_name: brandName,
       allowed_email_domains: allowedDomains,
+      match_schedule: hasMatchSchedule ? matchSchedule : null,
       faq_items: faqItems,
-      why_choose_us_items: whyChooseUsItems
+      why_choose_us_items: whyChooseUsItems,
+      home_metrics_visibility: hasHomeMetricsVisibility ? homeMetricsVisibility : null,
+      email_templates: hasEmailTemplates ? emailTemplates : null,
+      cross_school_matching_enabled: hasCrossSchoolMatchingEnabled ? crossSchoolMatchingEnabled : null
     }
   };
 }
@@ -385,10 +708,6 @@ export function validateBackgroundUploadFile(file) {
 
   if (!Number.isFinite(file.size) || file.size <= 0) {
     return { ok: false, msg: 'Invalid file size' };
-  }
-
-  if (file.size > MAX_BACKGROUND_IMAGE_BYTES) {
-    return { ok: false, msg: 'Image size must be <= 5MB' };
   }
 
   return {
@@ -426,6 +745,15 @@ export async function seedDefaultSiteSettings(db) {
     VALUES ($1, $2::jsonb)
     ON CONFLICT (setting_key) DO NOTHING
     `,
+    [SITE_SETTING_KEYS.MATCH_SCHEDULE, JSON.stringify(DEFAULT_MATCH_SCHEDULE)]
+  );
+
+  await db.query(
+    `
+    INSERT INTO unidate_app.site_settings(setting_key, setting_value_json)
+    VALUES ($1, $2::jsonb)
+    ON CONFLICT (setting_key) DO NOTHING
+    `,
     [SITE_SETTING_KEYS.FAQ_ITEMS, JSON.stringify(DEFAULT_FAQ_ITEMS)]
   );
 
@@ -436,6 +764,33 @@ export async function seedDefaultSiteSettings(db) {
     ON CONFLICT (setting_key) DO NOTHING
     `,
     [SITE_SETTING_KEYS.WHY_CHOOSE_US_ITEMS, JSON.stringify(DEFAULT_WHY_CHOOSE_US_ITEMS)]
+  );
+
+  await db.query(
+    `
+    INSERT INTO unidate_app.site_settings(setting_key, setting_value_json)
+    VALUES ($1, $2::jsonb)
+    ON CONFLICT (setting_key) DO NOTHING
+    `,
+    [SITE_SETTING_KEYS.HOME_METRICS_VISIBILITY, JSON.stringify(DEFAULT_HOME_METRICS_VISIBILITY)]
+  );
+
+  await db.query(
+    `
+    INSERT INTO unidate_app.site_settings(setting_key, setting_value_json)
+    VALUES ($1, $2::jsonb)
+    ON CONFLICT (setting_key) DO NOTHING
+    `,
+    [SITE_SETTING_KEYS.EMAIL_TEMPLATES, JSON.stringify(DEFAULT_EMAIL_TEMPLATES)]
+  );
+
+  await db.query(
+    `
+    INSERT INTO unidate_app.site_settings(setting_key, setting_value_json)
+    VALUES ($1, $2::jsonb)
+    ON CONFLICT (setting_key) DO NOTHING
+    `,
+    [SITE_SETTING_KEYS.CROSS_SCHOOL_MATCHING_ENABLED, JSON.stringify(DEFAULT_CROSS_SCHOOL_MATCHING_ENABLED)]
   );
 }
 
@@ -456,25 +811,54 @@ export async function getPublicSiteSettings(db) {
   return {
     brand_name: settings.brand_name,
     allowed_email_domains: settings.allowed_email_domains,
+    match_schedule: settings.match_schedule,
     faq_items: settings.faq_items,
     why_choose_us_items: settings.why_choose_us_items,
+    home_metrics_visibility: settings.home_metrics_visibility,
+    cross_school_matching_enabled: settings.cross_school_matching_enabled,
     home_hero_background_url: asset ? buildHomeHeroBackgroundUrl(asset.updated_at) : null,
     updated_at: computeLatestUpdatedAt(
       settings.brand_updated_at,
       settings.domains_updated_at,
+      settings.match_schedule_updated_at,
       settings.faq_updated_at,
       settings.why_choose_us_updated_at,
+      settings.home_metrics_visibility_updated_at,
+      settings.email_templates_updated_at,
+      settings.cross_school_matching_updated_at,
       asset?.updated_at
     )
   };
 }
 
+export async function getMatchScheduleSettings(db) {
+  const settings = await readCoreSiteSettings(db);
+  return settings.match_schedule;
+}
+
+export async function getHomeMetricsVisibilitySettings(db) {
+  const settings = await readCoreSiteSettings(db);
+  return settings.home_metrics_visibility;
+}
+
+export async function getEmailTemplates(db) {
+  const settings = await readCoreSiteSettings(db);
+  return settings.email_templates;
+}
+
+export async function getCrossSchoolMatchingEnabled(db) {
+  const settings = await readCoreSiteSettings(db);
+  return Boolean(settings.cross_school_matching_enabled);
+}
+
 export async function getAdminSiteSettings(db) {
   const publicSettings = await getPublicSiteSettings(db);
   const asset = await getHomeHeroAssetRow(db);
+  const settings = await readCoreSiteSettings(db);
 
   return {
     ...publicSettings,
+    email_templates: settings.email_templates,
     home_hero_background: asset
       ? {
           file_name: asset.file_name,
@@ -492,6 +876,12 @@ export async function updateSiteSettings(db, payload, updatedBy = null) {
   if (!validation.ok) {
     return validation;
   }
+  const effectiveMatchSchedule = validation.data.match_schedule || await getMatchScheduleSettings(db);
+  const effectiveHomeMetricsVisibility = validation.data.home_metrics_visibility || await getHomeMetricsVisibilitySettings(db);
+  const effectiveEmailTemplates = validation.data.email_templates || await getEmailTemplates(db);
+  const effectiveCrossSchoolMatchingEnabled = validation.data.cross_school_matching_enabled === null
+    ? await getCrossSchoolMatchingEnabled(db)
+    : validation.data.cross_school_matching_enabled;
 
   await withOptionalTransaction(db, async (executor) => {
     await upsertSiteSetting(executor, SITE_SETTING_KEYS.BRAND_NAME, validation.data.brand_name, updatedBy);
@@ -499,6 +889,12 @@ export async function updateSiteSettings(db, payload, updatedBy = null) {
       executor,
       SITE_SETTING_KEYS.ALLOWED_EMAIL_DOMAINS,
       validation.data.allowed_email_domains,
+      updatedBy
+    );
+    await upsertSiteSetting(
+      executor,
+      SITE_SETTING_KEYS.MATCH_SCHEDULE,
+      effectiveMatchSchedule,
       updatedBy
     );
     await upsertSiteSetting(
@@ -511,6 +907,24 @@ export async function updateSiteSettings(db, payload, updatedBy = null) {
       executor,
       SITE_SETTING_KEYS.WHY_CHOOSE_US_ITEMS,
       validation.data.why_choose_us_items,
+      updatedBy
+    );
+    await upsertSiteSetting(
+      executor,
+      SITE_SETTING_KEYS.HOME_METRICS_VISIBILITY,
+      effectiveHomeMetricsVisibility,
+      updatedBy
+    );
+    await upsertSiteSetting(
+      executor,
+      SITE_SETTING_KEYS.EMAIL_TEMPLATES,
+      effectiveEmailTemplates,
+      updatedBy
+    );
+    await upsertSiteSetting(
+      executor,
+      SITE_SETTING_KEYS.CROSS_SCHOOL_MATCHING_ENABLED,
+      effectiveCrossSchoolMatchingEnabled,
       updatedBy
     );
   });

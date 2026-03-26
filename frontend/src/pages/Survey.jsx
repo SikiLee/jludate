@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { Heart, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { getAccessToken } from '../lib/storage';
 import {
   createEmptyAnswers,
   FLAT_SURVEY_QUESTIONS,
-  SCORE_LABELS,
   SCORE_OPTIONS,
   SURVEY_SECTIONS
 } from '../constants/surveyQuestions';
+import { useSiteConfig } from '../context/SiteConfigContext';
 
 const GENDER_OPTIONS = [
   { value: 'male', label: '男' },
@@ -41,42 +42,57 @@ function normalizeIncomingAnswers(rawAnswers) {
 }
 
 function HeartScale({ value, onChange }) {
-  return (
-    <div className="grid grid-cols-7 gap-1.5 sm:gap-3 mt-4 px-1">
-      {SCORE_OPTIONS.map((score) => {
-        const selected = value === score;
-        const warm = score <= 3;
-        const neutral = score === 4;
+  const anchorLabels = {
+    1: '非常不认同',
+    4: '中立',
+    7: '非常认同'
+  };
 
-        return (
-          <button
-            key={score}
-            type="button"
-            onClick={() => onChange(score)}
-            className={[
-              'group h-14 sm:h-16 rounded-[1rem] border-2 transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden',
-              selected 
-                ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-105 z-10' 
-                : 'border-slate-100 bg-white hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5',
-              !selected && warm ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-50/50' : '',
-              !selected && neutral ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-50' : '',
-              !selected && score >= 5 ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50/50' : ''
-            ].join(' ')}
-          >
-            {selected && (
-              <motion.div
-                layoutId={`heartScaleBg-${score}`}
-                className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-szured opacity-20 pointer-events-none"
+  return (
+    <div className="mt-4 px-1">
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
+        {SCORE_OPTIONS.map((score) => {
+          const selected = value === score;
+          const warm = score <= 3;
+          const neutral = score === 4;
+
+          return (
+            <button
+              key={score}
+              type="button"
+              onClick={() => onChange(score)}
+              className={[
+                'group h-14 sm:h-16 rounded-[1rem] border-2 transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden',
+                selected
+                  ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-105 z-10'
+                  : 'border-slate-100 bg-white hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5',
+                !selected && warm ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-50/50' : '',
+                !selected && neutral ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-50' : '',
+                !selected && score >= 5 ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50/50' : ''
+              ].join(' ')}
+            >
+              {selected && (
+                <motion.div
+                  layoutId={`heartScaleBg-${score}`}
+                  className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-szured opacity-20 pointer-events-none"
+                />
+              )}
+              <Heart
+                className={`w-5 h-5 sm:w-6 sm:h-6 mb-1 transition-transform duration-300 ${selected ? 'scale-110 drop-shadow-md' : 'group-hover:scale-110'}`}
+                fill="currentColor"
               />
-            )}
-            <Heart 
-              className={`w-5 h-5 sm:w-6 sm:h-6 mb-1 transition-transform duration-300 ${selected ? 'scale-110 drop-shadow-md' : 'group-hover:scale-110'}`} 
-              fill="currentColor" 
-            />
-            <span className="text-[10px] sm:text-[12px] font-black tracking-tight">{score}</span>
-          </button>
-        );
-      })}
+              <span className="text-[10px] sm:text-[12px] font-black tracking-tight">{score}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-3 mt-2 text-[10px] sm:text-xs font-semibold text-slate-400">
+        {SCORE_OPTIONS.map((score) => (
+          <div key={`hint-${score}`} className="text-center min-h-[1.1rem]">
+            {anchorLabels[score] || ''}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -329,20 +345,44 @@ function InterpretationPanel({ interpretation }) {
 }
 
 function Survey() {
+  const isLoggedIn = Boolean(getAccessToken());
+  const location = useLocation();
+  const { siteConfig } = useSiteConfig();
   const [answers, setAnswers] = useState(createEmptyAnswers);
   const [surveySections, setSurveySections] = useState(SURVEY_SECTIONS);
-  const [profile, setProfile] = useState({ gender: '', target_gender: '', completed: false });
-  const [currentStep, setCurrentStep] = useState(0);
+  const [profile, setProfile] = useState({
+    gender: '',
+    target_gender: '',
+    allow_cross_school_match: false,
+    completed: !isLoggedIn
+  });
+  const [currentStep, setCurrentStep] = useState(isLoggedIn ? 0 : 1);
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
   const [submittedRose, setSubmittedRose] = useState(null);
+  const [surveyCompleted, setSurveyCompleted] = useState(false);
   const navigate = useNavigate();
+  const startInTestMode = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const mode = (params.get('mode') || '').trim().toLowerCase();
+    return mode === 'test' || mode === 'testing' || params.get('start') === '1';
+  }, [location.search]);
 
   useEffect(() => {
+    const profilePromise = isLoggedIn
+      ? api.get('/profile', { skipAuthRedirect: true }).catch(() => ({
+        data: { data: { gender: '', target_gender: '', allow_cross_school_match: false, completed: false } }
+      }))
+      : Promise.resolve({ data: { data: { gender: '', target_gender: '', allow_cross_school_match: false, completed: false } } });
+
+    const surveyPromise = isLoggedIn
+      ? api.get('/survey/get', { skipAuthRedirect: true }).catch(() => ({ data: { data: { completed: false, answers: null, rose_code: null, rose_name: null } } }))
+      : Promise.resolve({ data: { data: { completed: false, answers: null, rose_code: null, rose_name: null } } });
+
     Promise.all([
-      api.get('/profile').catch(() => ({ data: { data: { gender: '', target_gender: '', completed: false } } })),
-      api.get('/survey/get').catch(() => ({ data: { data: { completed: false, answers: null, rose_code: null, rose_name: null } } })),
-      api.get('/survey/questions').catch(() => ({ data: { data: { sections: SURVEY_SECTIONS } } }))
+      profilePromise,
+      surveyPromise,
+      api.get('/survey/questions', { skipAuthRedirect: true }).catch(() => ({ data: { data: { sections: SURVEY_SECTIONS } } }))
     ])
       .then(([profileRes, surveyRes, questionsRes]) => {
         const profilePayload = profileRes.data?.data || {};
@@ -358,10 +398,12 @@ function Survey() {
         setProfile({
           gender: profilePayload.gender || '',
           target_gender: profilePayload.target_gender || '',
-          completed: Boolean(profilePayload.completed)
+          allow_cross_school_match: Boolean(profilePayload.allow_cross_school_match),
+          completed: isLoggedIn ? Boolean(profilePayload.completed) : true
         });
 
         setAnswers(normalizeIncomingAnswers(surveyPayload.answers));
+        setSurveyCompleted(Boolean(surveyPayload.completed));
 
         if (surveyPayload.completed && surveyPayload.rose_code) {
           setSubmittedRose({
@@ -371,20 +413,25 @@ function Survey() {
           });
         }
 
-        if (profilePayload.completed) {
+        if (!isLoggedIn) {
+          setCurrentStep(1);
+        } else if (profilePayload.completed) {
           setCurrentStep(1);
         }
       })
       .finally(() => setInitLoading(false));
-  }, []);
+  }, [isLoggedIn]);
 
   const answeredCount = useMemo(
     () => Object.values(answers).filter((value) => Number.isInteger(value)).length,
     [answers]
   );
 
-  const totalSteps = surveySections.length + 1;
-  const stepProgress = Math.round((currentStep / totalSteps) * 100);
+  const totalSteps = surveySections.length + (isLoggedIn ? 1 : 0);
+  const totalStepsSafe = Math.max(1, totalSteps);
+  const displayStep = isLoggedIn ? currentStep + 1 : currentStep;
+  const progressBaseStep = isLoggedIn ? currentStep : Math.max(0, currentStep - 1);
+  const stepProgress = Math.round((progressBaseStep / totalStepsSafe) * 100);
   const currentSection = currentStep > 0 ? surveySections[currentStep - 1] : null;
 
   const sectionCompletedCount = useMemo(() => {
@@ -418,7 +465,8 @@ function Survey() {
 
     await api.post('/profile', {
       gender: profile.gender,
-      target_gender: profile.target_gender
+      target_gender: profile.target_gender,
+      allow_cross_school_match: Boolean(profile.allow_cross_school_match)
     });
 
     setProfile((prev) => ({ ...prev, completed: true }));
@@ -426,7 +474,7 @@ function Survey() {
   };
 
   const handleNextStep = async () => {
-    if (currentStep === 0) {
+    if (isLoggedIn && currentStep === 0) {
       setLoading(true);
       try {
         const ok = await handleSaveProfile();
@@ -453,7 +501,8 @@ function Survey() {
   };
 
   const handlePreviousStep = () => {
-    if (currentStep > 0) {
+    const minStep = isLoggedIn ? 0 : 1;
+    if (currentStep > minStep) {
       setCurrentStep((prev) => prev - 1);
     }
   };
@@ -482,7 +531,7 @@ function Survey() {
         type_interpretation: interpretation
       });
 
-      toast.success('问卷已提交，已生成你的 ROSE 类型');
+      toast.success(isLoggedIn ? '问卷已提交，已生成你的 ROSE 类型' : '类型测试完成，登录后可参与匹配');
     } catch {
       // handled by interceptor
     } finally {
@@ -520,13 +569,15 @@ function Survey() {
               className="inline-block px-4 py-1.5 rounded-full bg-white/80 border border-slate-200/60 shadow-sm mb-5 backdrop-blur-sm"
             >
               <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-szured to-indigo-600 bg-clip-text text-transparent">
-                🎉 分析完成，您已进入优质匹配池
+                {isLoggedIn ? '🎉 分析完成，您已进入优质匹配池' : '🎉 分析完成，您已解锁专属类型报告'}
               </span>
             </motion.div>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4 tracking-tight">
               遇 见 真 实 的 自 己
             </h2>
-            <p className="text-slate-500 font-medium text-base sm:text-lg">系统已为您生成专属的沉浸式心理测试解读报告</p>
+            <p className="text-slate-500 font-medium text-base sm:text-lg">
+              {isLoggedIn ? '系统已为您生成专属的沉浸式心理测试解读报告' : '您已完成游客测试，登录后即可参与每周匹配'}
+            </p>
           </div>
 
           {/* Persona Card */}
@@ -548,21 +599,56 @@ function Survey() {
              initial={{ y: 20, opacity: 0 }}
              animate={{ y: 0, opacity: 1 }}
              transition={{ delay: 0.3 }}
-             className="mb-14 flex justify-center"
+             className="mb-14 flex flex-col sm:flex-row justify-center gap-3"
           >
              <button
-              onClick={() => navigate('/match')}
+              onClick={() => navigate(isLoggedIn ? '/match' : '/auth')}
               className="px-8 py-4 sm:px-10 sm:py-5 bg-slate-900 hover:bg-black hover:-translate-y-1 active:scale-95 text-white rounded-2xl font-black text-base sm:text-lg transition-all duration-300 shadow-xl shadow-slate-900/20 flex items-center justify-center gap-2"
             >
-              开启心动匹配之旅
+              {isLoggedIn ? '开启心动匹配之旅' : '登录后开启匹配'}
               <span className="text-2xl leading-none">→</span>
             </button>
+            <button
+              onClick={() => navigate(`/feedback?from=survey_result${submittedRose.rose_code ? `&rose=${encodeURIComponent(submittedRose.rose_code)}` : ''}`)}
+              className="px-8 py-4 sm:px-10 sm:py-5 bg-white border border-slate-200 hover:border-slate-300 hover:-translate-y-1 text-slate-700 rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center"
+            >
+              提交使用反馈
+            </button>
+            {isLoggedIn ? (
+              <button
+                onClick={() => {
+                  setSubmittedRose(null);
+                  setCurrentStep(profile.completed ? 1 : 0);
+                }}
+                className="px-8 py-4 sm:px-10 sm:py-5 bg-white border border-indigo-200 hover:border-indigo-300 hover:-translate-y-1 text-indigo-700 rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center"
+              >
+                重新修改问卷
+              </button>
+            ) : null}
           </motion.div>
 
           <InterpretationPanel
             interpretation={submittedRose.type_interpretation}
           />
         </motion.div>
+      </div>
+    );
+  }
+
+  if (!surveyCompleted && !startInTestMode) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-[2rem] p-8 max-w-xl w-full shadow-2xl shadow-slate-200 text-center border border-slate-100">
+          <h2 className="text-3xl font-black text-slate-800 mb-4 tracking-tight">未填写问卷</h2>
+          <p className="text-slate-500 mb-8">完成问卷后才能查看类型与匹配结果。</p>
+          <button
+            type="button"
+            onClick={() => navigate('/survey?mode=test')}
+            className="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition"
+          >
+            去测试
+          </button>
+        </div>
       </div>
     );
   }
@@ -586,7 +672,7 @@ function Survey() {
             ROSE 深度测试
           </h2>
           <p className="text-slate-500 font-medium text-sm sm:text-base mb-8">
-            寻找最真实的内心世界 <span className="mx-2 text-slate-300">|</span> 步骤 {currentStep + 1}/{totalSteps}
+            寻找最真实的内心世界 <span className="mx-2 text-slate-300">|</span> 步骤 {displayStep}/{totalSteps}
           </p>
 
           <div className="w-full h-2.5 sm:h-3.5 bg-slate-100 rounded-full overflow-hidden shadow-inner relative">
@@ -611,16 +697,9 @@ function Survey() {
             </div>
           )}
 
-          <div className="mt-6 pt-6 border-t border-slate-100 flex flex-wrap gap-2 sm:gap-3 text-xs">
-            {SCORE_OPTIONS.map((score) => (
-              <span key={score} className="px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-full text-slate-600 font-medium hover:bg-white hover:shadow-sm transition-all cursor-default">
-                <strong className="text-slate-900 font-black">{score}</strong> - {SCORE_LABELS[score]}
-              </span>
-            ))}
-          </div>
         </div>
 
-        {currentStep === 0 ? (
+        {isLoggedIn && currentStep === 0 ? (
           <motion.section 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -670,6 +749,37 @@ function Survey() {
                   </div>
                 </div>
               </div>
+
+              {Boolean(siteConfig.cross_school_matching_enabled) ? (
+                <div className="group">
+                  <label className="block text-sm font-bold text-slate-700 mb-3 ml-1 transition-colors">是否允许外校匹配</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setProfile((prev) => ({ ...prev, allow_cross_school_match: false }))}
+                      className={`px-4 py-3 rounded-xl border text-sm font-semibold transition ${
+                        profile.allow_cross_school_match
+                          ? 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                          : 'border-violet-300 bg-violet-50 text-violet-700'
+                      }`}
+                    >
+                      否，仅本校匹配
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProfile((prev) => ({ ...prev, allow_cross_school_match: true }))}
+                      className={`px-4 py-3 rounded-xl border text-sm font-semibold transition ${
+                        profile.allow_cross_school_match
+                          ? 'border-violet-300 bg-violet-50 text-violet-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      是，可参与外校匹配
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">仅在管理员开启“外校匹配”后生效。</p>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-10 ml-0 sm:ml-14 max-w-xl">

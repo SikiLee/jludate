@@ -28,10 +28,10 @@ echo "Starting unidate Verification Suite..." | tee -a "$LOG_FILE"
 
 run_step "Install backend dependencies" npm install --prefix backend
 run_step "Install frontend dependencies" npm install --prefix frontend
-run_step "Run unit tests (ROSE engine)" /bin/zsh -lc 'node --test unit_tests/*.mjs'
+run_step "Run unit tests (ROSE engine)" /bin/zsh -lc 'SECRET_KEY=test-secret-key PRIVACY_KEYRING_JSON="{\"v1\":\"MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=\"}" node --test unit_tests/*.mjs'
 run_step "Build backend (Next.js API server)" npm run build --prefix backend
 run_step "Build frontend (Vite SPA)" npm run build --prefix frontend
-run_step "Docker compose up" /bin/zsh -lc 'ALLOW_TEST_TRIGGER=true SMTP_ENABLED=false EXPOSE_VERIFICATION_CODE_FOR_TESTS=true docker compose up --build -d --remove-orphans'
+run_step "Docker compose up" /bin/zsh -lc 'ALLOW_TEST_TRIGGER=true SMTP_ENABLED=false EXPOSE_VERIFICATION_CODE_FOR_TESTS=true SECRET_KEY=test-secret-key PRIVACY_KEYRING_JSON="{\"v1\":\"MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=\"}" docker compose up --build -d --remove-orphans'
 run_step "Wait for backend health" /bin/zsh -lc 'for i in {1..40}; do curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
 run_step "Wait for frontend availability" /bin/zsh -lc 'for i in {1..30}; do curl -fsS http://127.0.0.1:8383 >/dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
 run_step "Run API tests" /bin/zsh -lc 'BASE_URL=http://127.0.0.1:8000/api node --test API_tests/test_api.mjs'

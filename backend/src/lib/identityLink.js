@@ -353,6 +353,7 @@ export async function listActiveIdentityProfilesForMatching(db, { actor = 'syste
       u.email_key_version,
       u.gender,
       u.target_gender,
+      u.allow_cross_school_match,
       u.orientation,
       l.respondent_id_ciphertext,
       l.respondent_id_key_version
@@ -377,6 +378,7 @@ export async function listActiveIdentityProfilesForMatching(db, { actor = 'syste
       email,
       gender: row.gender,
       target_gender: row.target_gender,
+      allow_cross_school_match: Boolean(row.allow_cross_school_match),
       orientation: row.orientation
     });
   }

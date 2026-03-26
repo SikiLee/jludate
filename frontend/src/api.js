@@ -24,6 +24,7 @@ api.interceptors.response.use(
   },
   error => {
     const status = error.response?.status;
+    const skipAuthRedirect = Boolean(error.config?.skipAuthRedirect);
     const responseData = error.response?.data;
     const serverMsg = typeof responseData === 'string'
       ? responseData
@@ -31,6 +32,9 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       clearAuthStorage();
+      if (skipAuthRedirect) {
+        return Promise.reject(error);
+      }
       toast.error('未登录或登录已过期，请重新登录');
       setTimeout(() => {
         window.location.href = '/auth';
@@ -38,7 +42,7 @@ api.interceptors.response.use(
     } else if (status === 403) {
       toast.error('权限不足');
     } else if (status === 413) {
-      toast.error('上传文件过大，请控制在 5MB 以内');
+      toast.error('上传内容过大，请更换更小文件或联系管理员调整网关限制');
     } else {
       toast.error(serverMsg || '网络异常，请重试');
     }

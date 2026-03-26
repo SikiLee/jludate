@@ -2,6 +2,54 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:8000/api';
+const DOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+
+function normalizeDomainRule(rawValue) {
+  if (typeof rawValue !== 'string') {
+    return '';
+  }
+
+  const value = rawValue.trim().toLowerCase().replace(/^@+/, '');
+  if (!value || /\.\./.test(value)) {
+    return '';
+  }
+
+  if (value.startsWith('*.')) {
+    const suffix = value.slice(2);
+    if (!suffix || !DOMAIN_REGEX.test(suffix)) {
+      return '';
+    }
+    return `*.${suffix}`;
+  }
+
+  if (!DOMAIN_REGEX.test(value)) {
+    return '';
+  }
+
+  return value;
+}
+
+function resolveTestEmailDomain(rawRules) {
+  if (!Array.isArray(rawRules)) {
+    return 'szu.edu.cn';
+  }
+
+  const rules = rawRules
+    .map((item) => normalizeDomainRule(item))
+    .filter(Boolean);
+
+  const exact = rules.find((rule) => !rule.startsWith('*.'));
+  if (exact) {
+    return exact;
+  }
+
+  const wildcard = rules.find((rule) => rule.startsWith('*.'));
+  if (wildcard) {
+    return `test.${wildcard.slice(2)}`;
+  }
+
+  return 'szu.edu.cn';
+}
 
 function buildAnswers(defaultValue = 4) {
   const answers = {};
@@ -56,9 +104,8 @@ async function loginAndGetToken(email, password) {
 
 test('end-to-end API flow with ROSE survey and match trigger', async () => {
   const timestamp = Date.now();
-  const userAEmail = `rose_user_a_${timestamp}@szu.edu.cn`;
-  const userBEmail = `rose_user_b_${timestamp}@szu.edu.cn`;
   const password = 'Password123!';
+  const resetPassword = 'NewPassword123!';
 
   const publicSiteSettings = await request('/public/site-settings', { method: 'GET' });
   assert.equal(publicSiteSettings.status, 200);
@@ -70,13 +117,32 @@ test('end-to-end API flow with ROSE survey and match trigger', async () => {
   assert.ok(publicSiteSettings.payload?.data?.why_choose_us_items.length > 0);
   assert.ok(Array.isArray(publicSiteSettings.payload?.data?.faq_items));
   assert.ok(publicSiteSettings.payload?.data?.faq_items.length > 0);
+  const testEmailDomain = resolveTestEmailDomain(publicSiteSettings.payload?.data?.allowed_email_domains);
+  const userAEmail = `rose_user_a_${timestamp}@${testEmailDomain}`;
+  const userBEmail = `rose_user_b_${timestamp}@${testEmailDomain}`;
 
   const publicHomeMetrics = await request('/public/home-metrics', { method: 'GET' });
   assert.equal(publicHomeMetrics.status, 200);
   assert.equal(publicHomeMetrics.payload?.code, 200);
-  assert.equal(typeof publicHomeMetrics.payload?.data?.registered_users, 'number');
-  assert.equal(typeof publicHomeMetrics.payload?.data?.survey_completion_rate, 'number');
-  assert.equal(typeof publicHomeMetrics.payload?.data?.matched_users, 'number');
+  const metricVisibility = publicHomeMetrics.payload?.data?.metric_visibility || {};
+  assert.equal(typeof metricVisibility.registered_users, 'boolean');
+  assert.equal(typeof metricVisibility.survey_completion_rate, 'boolean');
+  assert.equal(typeof metricVisibility.matched_users, 'boolean');
+  if (metricVisibility.registered_users) {
+    assert.equal(typeof publicHomeMetrics.payload?.data?.registered_users, 'number');
+  } else {
+    assert.equal(publicHomeMetrics.payload?.data?.registered_users, null);
+  }
+  if (metricVisibility.survey_completion_rate) {
+    assert.equal(typeof publicHomeMetrics.payload?.data?.survey_completion_rate, 'number');
+  } else {
+    assert.equal(publicHomeMetrics.payload?.data?.survey_completion_rate, null);
+  }
+  if (metricVisibility.matched_users) {
+    assert.equal(typeof publicHomeMetrics.payload?.data?.matched_users, 'number');
+  } else {
+    assert.equal(publicHomeMetrics.payload?.data?.matched_users, null);
+  }
   assert.equal(typeof publicHomeMetrics.payload?.data?.next_match_in_seconds, 'number');
 
   const publicHeroAsset = await request('/public/site-assets/home-hero-background', { method: 'GET' });
@@ -84,6 +150,24 @@ test('end-to-end API flow with ROSE survey and match trigger', async () => {
 
   const unauthorizedSurvey = await request('/survey/get');
   assert.equal(unauthorizedSurvey.status, 401);
+
+  const guestSurveyQuestions = await request('/survey/questions', {
+    method: 'GET'
+  });
+  assert.equal(guestSurveyQuestions.status, 200);
+  assert.ok(Array.isArray(guestSurveyQuestions.payload?.data?.sections));
+  assert.ok(guestSurveyQuestions.payload?.data?.sections.length > 0);
+
+  const guestSubmit = await request('/survey/submit', {
+    method: 'POST',
+    body: JSON.stringify({ answers: buildAnswers(4) })
+  });
+  assert.equal(guestSubmit.status, 200);
+  assert.equal(guestSubmit.payload?.code, 200);
+  assert.ok(guestSubmit.payload?.data?.rose_code);
+  assert.ok(guestSubmit.payload?.data?.rose_name);
+  assert.equal(guestSubmit.payload?.data?.guest_mode, true);
+  assert.equal(guestSubmit.payload?.data?.match_enabled, false);
 
   const invalidDomainSendCode = await request('/auth/send-code', {
     method: 'POST',
@@ -130,16 +214,59 @@ test('end-to-end API flow with ROSE survey and match trigger', async () => {
   assert.equal(registerB.status, 200);
   assert.equal(registerB.payload?.code, 200);
 
-  const tokenA = await loginAndGetToken(userAEmail, password);
-  const tokenB = await loginAndGetToken(userBEmail, password);
-
-  const surveyQuestions = await request('/survey/questions', {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${tokenA}` }
+  const forgotCodeInvalidDomain = await request('/auth/forgot-password/send-code', {
+    method: 'POST',
+    body: JSON.stringify({ email: `outside_reset_${timestamp}@gmail.com` })
   });
-  assert.equal(surveyQuestions.status, 200);
-  assert.ok(Array.isArray(surveyQuestions.payload?.data?.sections));
-  assert.ok(surveyQuestions.payload?.data?.sections.length > 0);
+  assert.equal(forgotCodeInvalidDomain.status, 400);
+
+  const forgotCodeNonExist = await request('/auth/forgot-password/send-code', {
+    method: 'POST',
+    body: JSON.stringify({ email: `not_exists_${timestamp}@${testEmailDomain}` })
+  });
+  assert.equal(forgotCodeNonExist.status, 200);
+  assert.equal(forgotCodeNonExist.payload?.code, 200);
+
+  const forgotCodeA = await request('/auth/forgot-password/send-code', {
+    method: 'POST',
+    body: JSON.stringify({ email: userAEmail })
+  });
+  assert.equal(forgotCodeA.status, 200);
+  assert.equal(forgotCodeA.payload?.code, 200);
+  const resetCodeA = readVerificationCodeFromSendCodeResponse(forgotCodeA, userAEmail);
+
+  const resetWithWrongCode = await request('/auth/forgot-password/reset', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: userAEmail,
+      password: resetPassword,
+      code: '000000'
+    })
+  });
+  assert.equal(resetWithWrongCode.status, 400);
+
+  const resetA = await request('/auth/forgot-password/reset', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: userAEmail,
+      password: resetPassword,
+      code: resetCodeA
+    })
+  });
+  assert.equal(resetA.status, 200);
+  assert.equal(resetA.payload?.code, 200);
+
+  const loginOldPassword = await request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: userAEmail,
+      password
+    })
+  });
+  assert.equal(loginOldPassword.status, 400);
+
+  const tokenA = await loginAndGetToken(userAEmail, resetPassword);
+  const tokenB = await loginAndGetToken(userBEmail, password);
 
   const saveProfileA = await request('/profile', {
     method: 'POST',
@@ -252,6 +379,6 @@ test('end-to-end API flow with ROSE survey and match trigger', async () => {
   assert.equal(typeof myMatchA.payload?.data?.match_percent, 'number');
   assert.ok(myMatchA.payload?.data?.self_rose);
   assert.ok(myMatchA.payload?.data?.partner_rose);
-  assert.ok(myMatchA.payload?.data?.killer_point);
+  assert.equal(Object.prototype.hasOwnProperty.call(myMatchA.payload?.data || {}, 'killer_point'), false);
   assert.ok(myMatchA.payload?.data?.type_interpretation);
 });

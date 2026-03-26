@@ -2,29 +2,30 @@ import jwt from 'jsonwebtoken';
 import { identityPool } from './db.js';
 import { hashPassword, verifyPassword } from './password.js';
 
-const SECRET_KEY = process.env.SECRET_KEY || 'supersecretkey-unidate';
 const ALGORITHM = 'HS256';
 export { hashPassword, verifyPassword };
 
+function readJwtSecretKey() {
+  const secret = typeof process.env.SECRET_KEY === 'string' ? process.env.SECRET_KEY.trim() : '';
+  if (!secret) {
+    throw new Error('SECRET_KEY environment variable is required');
+  }
+  return secret;
+}
+
 export function createAccessToken(userId) {
-  return jwt.sign({ sub: String(userId), typ: 'uid' }, SECRET_KEY, { algorithm: ALGORITHM });
+  return jwt.sign({ sub: String(userId), typ: 'uid' }, readJwtSecretKey(), { algorithm: ALGORITHM });
 }
 
 export function decodeAccessToken(token) {
   try {
-    return jwt.verify(token, SECRET_KEY, { algorithms: [ALGORITHM] });
+    return jwt.verify(token, readJwtSecretKey(), { algorithms: [ALGORITHM] });
   } catch {
     return null;
   }
 }
 
-export async function getCurrentUserFromRequest(request) {
-  const authorization = request.headers.get('authorization');
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return { error: { status: 401, msg: 'Invalid token format' } };
-  }
-
-  const token = authorization.slice(7);
+async function resolveUserFromBearerToken(token) {
   const payload = decodeAccessToken(token);
   if (!payload || !payload.sub) {
     return { error: { status: 401, msg: 'Invalid token' } };
@@ -44,6 +45,31 @@ export async function getCurrentUserFromRequest(request) {
   }
 
   return { user: result.rows[0] };
+}
+
+export async function getCurrentUserIfPresentFromRequest(request) {
+  const authorization = request.headers.get('authorization');
+  if (!authorization) {
+    return { user: null };
+  }
+
+  if (!authorization.startsWith('Bearer ')) {
+    return { error: { status: 401, msg: 'Invalid token format' } };
+  }
+
+  const token = authorization.slice(7);
+  return resolveUserFromBearerToken(token);
+}
+
+export async function getCurrentUserFromRequest(request) {
+  const result = await getCurrentUserIfPresentFromRequest(request);
+  if (result.error) {
+    return result;
+  }
+  if (!result.user) {
+    return { error: { status: 401, msg: 'Invalid token format' } };
+  }
+  return result;
 }
 
 export async function getAdminUserFromRequest(request) {

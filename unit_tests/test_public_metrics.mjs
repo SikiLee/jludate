@@ -19,6 +19,9 @@ test('getPublicHomeMetrics returns database-backed values', async () => {
     if (sql.includes('SELECT respondent1_id AS respondent_id')) {
       return { rows: [{ total: 4 }] };
     }
+    if (sql.includes('FROM unidate_app.site_settings')) {
+      return { rows: [] };
+    }
     throw new Error('Unexpected survey query');
   });
 
@@ -40,6 +43,9 @@ test('survey completion rate is capped at 100%', async () => {
     }
     if (sql.includes('SELECT respondent1_id AS respondent_id')) {
       return { rows: [{ total: 2 }] };
+    }
+    if (sql.includes('FROM unidate_app.site_settings')) {
+      return { rows: [] };
     }
     throw new Error('Unexpected survey query');
   });

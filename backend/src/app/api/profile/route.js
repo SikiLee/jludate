@@ -14,6 +14,7 @@ function toProfilePayload(row) {
   return {
     gender: row.gender || null,
     target_gender: targetGender,
+    allow_cross_school_match: Boolean(row.allow_cross_school_match),
     completed: Boolean(row.gender && targetGender)
   };
 }
@@ -29,7 +30,7 @@ export async function GET(request) {
     }
 
     const result = await identityPool.query(
-      'SELECT gender, target_gender, orientation FROM unidate_app.users WHERE id = $1 LIMIT 1',
+      'SELECT gender, target_gender, orientation, allow_cross_school_match FROM unidate_app.users WHERE id = $1 LIMIT 1',
       [authResult.user.id]
     );
 
@@ -57,25 +58,40 @@ export async function POST(request) {
     const body = await readJson(request);
     const gender = body?.gender;
     const targetGender = body?.target_gender;
+    const allowCrossSchoolMatch = typeof body?.allow_cross_school_match === 'boolean'
+      ? body.allow_cross_school_match
+      : null;
 
-    const validation = validateProfile({ gender, target_gender: targetGender });
+    const profilePayload = {
+      gender,
+      target_gender: targetGender
+    };
+    if (allowCrossSchoolMatch !== null) {
+      profilePayload.allow_cross_school_match = allowCrossSchoolMatch;
+    }
+
+    const validation = validateProfile(profilePayload);
     if (!validation.ok) {
       return bizError(400, validation.msg);
     }
 
-    await identityPool.query(
+    const updateResult = await identityPool.query(
       `
       UPDATE unidate_app.users
       SET gender = $1,
-          target_gender = $2
-      WHERE id = $3
+          target_gender = $2,
+          allow_cross_school_match = COALESCE($3, allow_cross_school_match)
+      WHERE id = $4
+      RETURNING allow_cross_school_match
       `,
-      [gender, targetGender, authResult.user.id]
+      [gender, targetGender, allowCrossSchoolMatch, authResult.user.id]
     );
+    const savedAllowCrossSchoolMatch = Boolean(updateResult.rows[0]?.allow_cross_school_match);
 
     return success('Profile saved', {
       gender,
       target_gender: targetGender,
+      allow_cross_school_match: savedAllowCrossSchoolMatch,
       completed: true
     });
   } catch (error) {

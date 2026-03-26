@@ -1,6 +1,6 @@
 import { ensureSchema, identityPool, surveyPool } from 'lib/db';
 import { ensureServerBootstrap } from 'lib/bootstrap';
-import { getCurrentUserFromRequest } from 'lib/auth';
+import { getCurrentUserIfPresentFromRequest } from 'lib/auth';
 import { ensureRespondentIdForUser } from 'lib/identityLink';
 import { computeRoseProfile, resolveTargetGender, validateAnswers } from 'lib/rose';
 import { getPublicTypeInterpretation } from 'lib/typeInterpretation';
@@ -15,13 +15,35 @@ export async function POST(request) {
     ensureServerBootstrap();
     await ensureSchema();
 
-    const authResult = await getCurrentUserFromRequest(request);
+    const authResult = await getCurrentUserIfPresentFromRequest(request);
     if (authResult.error) {
       return httpError(authResult.error.status, authResult.error.msg);
     }
 
     const body = await readJson(request);
     const answers = body?.answers;
+
+    const answerValidation = validateAnswers(answers);
+    if (!answerValidation.ok) {
+      return bizError(400, answerValidation.msg);
+    }
+
+    const roseResult = computeRoseProfile(answerValidation.normalized);
+    if (!roseResult.ok) {
+      return bizError(400, roseResult.msg);
+    }
+
+    const typeInterpretation = await getPublicTypeInterpretation(surveyPool, roseResult.profile.rose_code);
+
+    if (!authResult.user) {
+      return success('Guest survey submitted successfully', {
+        rose_code: roseResult.profile.rose_code,
+        rose_name: roseResult.profile.rose_name,
+        type_interpretation: typeInterpretation,
+        guest_mode: true,
+        match_enabled: false
+      });
+    }
 
     const profileResult = await identityPool.query(
       'SELECT gender, target_gender, orientation FROM unidate_app.users WHERE id = $1 LIMIT 1',
@@ -40,16 +62,6 @@ export async function POST(request) {
       actor: `user:${authResult.user.id}`,
       purpose: 'survey_submit'
     });
-
-    const answerValidation = validateAnswers(answers);
-    if (!answerValidation.ok) {
-      return bizError(400, answerValidation.msg);
-    }
-
-    const roseResult = computeRoseProfile(answerValidation.normalized);
-    if (!roseResult.ok) {
-      return bizError(400, roseResult.msg);
-    }
 
     await surveyPool.query(
       `
@@ -79,12 +91,12 @@ export async function POST(request) {
       ]
     );
 
-    const typeInterpretation = await getPublicTypeInterpretation(surveyPool, roseResult.profile.rose_code);
-
     return success('Survey submitted successfully', {
       rose_code: roseResult.profile.rose_code,
       rose_name: roseResult.profile.rose_name,
-      type_interpretation: typeInterpretation
+      type_interpretation: typeInterpretation,
+      guest_mode: false,
+      match_enabled: true
     });
   } catch (error) {
     console.error('POST /api/survey/submit failed:', error);

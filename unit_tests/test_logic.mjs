@@ -48,10 +48,12 @@ test('validateAnswers requires exact 50 integer scores', () => {
   assert.equal(validateAnswers(outOfRange).ok, false);
 });
 
-test('validateProfile accepts only gender + target_gender', () => {
+test('validateProfile accepts gender/target and optional cross-school flag', () => {
   assert.equal(validateProfile({ gender: 'male', target_gender: 'female' }).ok, true);
+  assert.equal(validateProfile({ gender: 'male', target_gender: 'female', allow_cross_school_match: true }).ok, true);
   assert.equal(validateProfile({ gender: 'male', target_gender: 'prefer_both' }).ok, false);
   assert.equal(validateProfile({ gender: 'unknown', target_gender: 'female' }).ok, false);
+  assert.equal(validateProfile({ gender: 'male', target_gender: 'female', allow_cross_school_match: 'yes' }).ok, false);
 });
 
 test('dimension tie-break follows core question score', () => {
@@ -61,17 +63,17 @@ test('dimension tie-break follows core question score', () => {
 
   const roseA = computeRoseProfile(tiePreferA);
   assert.equal(roseA.ok, true);
-  assert.equal(roseA.profile.dimension_scores.A, 40);
+  assert.equal(roseA.profile.dimension_scores.A, 44);
   assert.equal(roseA.profile.dimension_letters.A, 'A');
 
   const tiePreferB = buildAnswers();
   const roseB = computeRoseProfile(tiePreferB);
   assert.equal(roseB.ok, true);
-  assert.equal(roseB.profile.dimension_scores.A, 40);
+  assert.equal(roseB.profile.dimension_scores.A, 44);
   assert.equal(roseB.profile.dimension_letters.A, 'B');
 });
 
-test('hard filter rejects I/S mismatch and veto question split', () => {
+test('hard filter only rejects incompatible profile settings', () => {
   const baseAnswers = buildAnswers();
   baseAnswers.q41 = 1;
   const left = buildUser({ answers: baseAnswers, gender: 'male', target_gender: 'female' });
@@ -82,15 +84,18 @@ test('hard filter rejects I/S mismatch and veto question split', () => {
   const rightBoundary = buildUser({ answers: diffBoundaryAnswers, gender: 'female', target_gender: 'male' });
 
   const boundaryResult = evaluateHardFilters(left, rightBoundary);
-  assert.equal(boundaryResult.passed, false);
-  assert.equal(boundaryResult.reason, 'boundary_type_conflict');
+  assert.equal(boundaryResult.passed, true);
 
   const vetoAnswers = buildAnswers();
   vetoAnswers.q41 = 7;
   const rightVeto = buildUser({ answers: vetoAnswers, gender: 'female', target_gender: 'male' });
   const vetoResult = evaluateHardFilters(left, rightVeto);
-  assert.equal(vetoResult.passed, false);
-  assert.equal(vetoResult.reason, 'veto_q41');
+  assert.equal(vetoResult.passed, true);
+
+  const profileMismatch = buildUser({ answers: buildAnswers(), gender: 'female', target_gender: 'female' });
+  const profileMismatchResult = evaluateHardFilters(left, profileMismatch);
+  assert.equal(profileMismatchResult.passed, false);
+  assert.equal(profileMismatchResult.reason, 'profile_mismatch');
 });
 
 test('match score is capped at 99.9', () => {
@@ -103,18 +108,16 @@ test('match score is capped at 99.9', () => {
   assert.equal(score.final_match_percent, 99.9);
 });
 
-test('communication complementary bonus grants +5%', () => {
-  const cHighAnswers = buildAnswers();
-  cHighAnswers.q4 = 7;
-  cHighAnswers.q22 = 7;
-  cHighAnswers.q23 = 7;
+test('power & ambition loop grants +5 bonus', () => {
+  const userALead = buildAnswers();
+  userALead.q49 = 6;
 
-  const cLowAnswers = buildAnswers();
-  cLowAnswers.q4 = 1;
-  cLowAnswers.q22 = 1;
+  const userBConquer = buildAnswers();
+  userBConquer.q2 = 6;
+  userBConquer.q6 = 6;
 
-  const userA = buildUser({ answers: cHighAnswers, gender: 'male', target_gender: 'female' });
-  const userB = buildUser({ answers: cLowAnswers, gender: 'female', target_gender: 'male' });
+  const userA = buildUser({ answers: userALead, gender: 'male', target_gender: 'female' });
+  const userB = buildUser({ answers: userBConquer, gender: 'female', target_gender: 'male' });
 
   const score = computeMatchScore(userA, userB);
   assert.equal(score.is_match, true);

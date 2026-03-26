@@ -4,6 +4,12 @@ import api from '../api';
 const DEFAULT_SETTINGS = {
   brand_name: 'unidate',
   allowed_email_domains: ['szu.edu.cn'],
+  match_schedule: {
+    day_of_week: 2,
+    hour: 21,
+    minute: 0,
+    timezone: 'Asia/Shanghai'
+  },
   why_choose_us_items: [
     {
       icon: 'clock',
@@ -44,6 +50,7 @@ const DEFAULT_SETTINGS = {
       a: '我们的配对系统基于独创的 ROSE 亲密关系模型，深度融合行为心理学、核心价值观契合度以及人际边界理论。核心逻辑是“底线一致，特质互补”：在原则和三观上寻找同频，在性格与沟通方式上捕捉能产生化学反应的良性差异。'
     }
   ],
+  cross_school_matching_enabled: false,
   home_hero_background_url: null,
   updated_at: null
 };
@@ -66,6 +73,19 @@ function normalizeSettings(rawValue) {
       .map((item) => item.trim().toLowerCase().replace(/^@+/, ''))
       .filter(Boolean)
     : [];
+
+  const rawMatchSchedule = payload.match_schedule && typeof payload.match_schedule === 'object'
+    ? payload.match_schedule
+    : {};
+  const dayOfWeek = Number.isInteger(rawMatchSchedule.day_of_week) && rawMatchSchedule.day_of_week >= 0 && rawMatchSchedule.day_of_week <= 6
+    ? rawMatchSchedule.day_of_week
+    : DEFAULT_SETTINGS.match_schedule.day_of_week;
+  const hour = Number.isInteger(rawMatchSchedule.hour) && rawMatchSchedule.hour >= 0 && rawMatchSchedule.hour <= 23
+    ? rawMatchSchedule.hour
+    : DEFAULT_SETTINGS.match_schedule.hour;
+  const minute = Number.isInteger(rawMatchSchedule.minute) && rawMatchSchedule.minute >= 0 && rawMatchSchedule.minute <= 59
+    ? rawMatchSchedule.minute
+    : DEFAULT_SETTINGS.match_schedule.minute;
 
   const faqItems = Array.isArray(payload.faq_items)
     ? payload.faq_items
@@ -91,8 +111,17 @@ function normalizeSettings(rawValue) {
   return {
     brand_name: brandName,
     allowed_email_domains: allowedEmailDomains.length > 0 ? [...new Set(allowedEmailDomains)] : DEFAULT_SETTINGS.allowed_email_domains,
+    match_schedule: {
+      day_of_week: dayOfWeek,
+      hour,
+      minute,
+      timezone: 'Asia/Shanghai'
+    },
     why_choose_us_items: whyChooseUsItems.length > 0 ? whyChooseUsItems : DEFAULT_SETTINGS.why_choose_us_items,
     faq_items: faqItems.length > 0 ? faqItems : DEFAULT_SETTINGS.faq_items,
+    cross_school_matching_enabled: typeof payload.cross_school_matching_enabled === 'boolean'
+      ? payload.cross_school_matching_enabled
+      : DEFAULT_SETTINGS.cross_school_matching_enabled,
     home_hero_background_url: typeof payload.home_hero_background_url === 'string' && payload.home_hero_background_url
       ? payload.home_hero_background_url
       : null,
@@ -106,7 +135,7 @@ export function SiteConfigProvider({ children }) {
 
   const refreshSiteConfig = async () => {
     try {
-      const response = await api.get('/public/site-settings');
+      const response = await api.get('/public/site-settings', { skipAuthRedirect: true });
       const nextConfig = normalizeSettings(response.data?.data);
       setSiteConfig(nextConfig);
       return nextConfig;

@@ -8,7 +8,10 @@ const AUTH_TAG_BYTES = 16;
 let cachedConfig = null;
 
 function deriveFallbackKey() {
-  const secret = process.env.SECRET_KEY || 'fallback-insecure-secret';
+  const secret = typeof process.env.SECRET_KEY === 'string' ? process.env.SECRET_KEY.trim() : '';
+  if (!secret) {
+    throw new Error('SECRET_KEY is required when ALLOW_INSECURE_PRIVACY_FALLBACK=true');
+  }
   const key = crypto.createHash('sha256').update(secret).digest();
   return {
     activeVersion: DEFAULT_ACTIVE_VERSION,
@@ -16,12 +19,16 @@ function deriveFallbackKey() {
   };
 }
 
+function shouldAllowInsecureFallback() {
+  return process.env.ALLOW_INSECURE_PRIVACY_FALLBACK === 'true';
+}
+
 function shouldRequireExplicitKeyring() {
   if (process.env.PRIVACY_REQUIRE_KEYRING === 'true') {
     return true;
   }
 
-  return process.env.NODE_ENV === 'production';
+  return !shouldAllowInsecureFallback();
 }
 
 function parseRawKeyring(raw) {
@@ -77,7 +84,7 @@ function loadKeyConfig() {
   const parsed = parseRawKeyring(raw);
   if (!parsed) {
     if (shouldRequireExplicitKeyring()) {
-      throw new Error('PRIVACY_KEYRING_JSON/PRIVACY_KEYRING is required in production');
+      throw new Error('PRIVACY_KEYRING_JSON/PRIVACY_KEYRING is required');
     }
     return deriveFallbackKey();
   }

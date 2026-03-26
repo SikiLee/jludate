@@ -1,4 +1,6 @@
-import { getCurrentScheduledRunKey, isTuesday21InShanghai, runMatchingEngine } from 'lib/matching';
+import { ensureSchema, surveyPool } from 'lib/db';
+import { getCurrentScheduledRunKey, runMatchingEngine } from 'lib/matching';
+import { getMatchScheduleSettings, isMatchScheduleDueInShanghai } from 'lib/siteConfig';
 
 let schedulerStarted = false;
 let intervalHandler;
@@ -31,8 +33,11 @@ async function runScheduledMatch() {
 }
 
 async function tick() {
+  await ensureSchema();
+
   const now = new Date();
-  if (!isTuesday21InShanghai(now)) {
+  const matchSchedule = await getMatchScheduleSettings(surveyPool);
+  if (!isMatchScheduleDueInShanghai(matchSchedule, now)) {
     return;
   }
 

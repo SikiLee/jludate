@@ -2,8 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Survey from './pages/Survey';
+import RoseTypes from './pages/RoseTypes';
 import Match from './pages/Match';
 import Admin from './pages/Admin';
+import Feedback from './pages/Feedback';
 import Navbar from './components/Navbar';
 import { getAccessToken, getIsAdmin, migrateLegacyStorageKeys } from './lib/storage';
 import { useEffect } from 'react';
@@ -39,11 +41,9 @@ function AppLayout() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/survey" element={
-            <ProtectedRoute>
-              <Survey />
-            </ProtectedRoute>
-          } />
+          <Route path="/survey" element={<Survey />} />
+          <Route path="/rose" element={<RoseTypes />} />
+          <Route path="/feedback" element={<Feedback />} />
           <Route path="/match" element={
             <ProtectedRoute>
               <Match />

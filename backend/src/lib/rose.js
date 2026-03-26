@@ -8,7 +8,6 @@ const DIMENSION_WEIGHTS = {
 export const GENDERS = ['male', 'female'];
 export const TARGET_GENDERS = ['male', 'female'];
 export const ORIENTATIONS = ['prefer_male', 'prefer_female', 'prefer_both'];
-export const HARD_VETO_QUESTIONS = [1, 41, 42];
 
 function q(number) {
   return `q${number}`;
@@ -75,18 +74,18 @@ const DIMENSION_CONFIG = {
   A: {
     positiveLetter: 'A',
     negativeLetter: 'B',
-    threshold: 40,
+    threshold: 44,
     tieBreaker: 2,
-    positiveQuestions: [2, 6, 8, 9, 10, 15, 19, 50],
+    positiveQuestions: [2, 6, 8, 9, 10, 15, 19, 49, 50],
     reverseQuestions: [1, 3]
   },
   C: {
     positiveLetter: 'C',
     negativeLetter: 'G',
-    threshold: 36,
+    threshold: 32,
     tieBreaker: 4,
     positiveQuestions: [4, 22, 23, 24, 27],
-    reverseQuestions: [21, 25, 29, 40]
+    reverseQuestions: [21, 25, 29]
   },
   I: {
     positiveLetter: 'I',
@@ -101,8 +100,8 @@ const DIMENSION_CONFIG = {
     negativeLetter: 'F',
     threshold: 80,
     tieBreaker: 41,
-    positiveQuestions: [5, 13, 14, 16, 20, 28, 37, 41, 42, 43, 45, 47, 48, 49],
-    reverseQuestions: [7, 11, 17, 18, 44, 46]
+    positiveQuestions: [5, 13, 14, 16, 20, 28, 37, 41, 42, 43, 47, 48],
+    reverseQuestions: [7, 11, 17, 18, 40, 44, 45, 46]
   }
 };
 
@@ -124,6 +123,139 @@ const ROSE_TYPE_NAMES = {
   BGSR: '终极避风港 (Ultimate Safe Haven)',
   BGSF: '人间水豚 (Human Capybara)'
 };
+
+const MATCH_REASON_DIMENSIONS = [
+  {
+    key: 'A',
+    index: 0,
+    title: '🧭 维度 1：人生轨迹 (A 探索者 vs B 筑巢者)',
+    core: '生活航向的同频与完美分工',
+    templates: {
+      AA: {
+        label: '同频共振：A + A',
+        reason: '你们是两头并肩在旷野上奔跑的狼。你们都不甘平庸，都渴望征服世界。你们能理解对方为什么深夜加班，也能理解为什么临时想远行。你们的关系是势均力敌的顶峰相见。'
+      },
+      BB: {
+        label: '岁月静好：B + B',
+        reason: '你们都深知外面的世界再精彩，也不如家里的一碗热汤。你们对安全感、家庭秩序和长期稳定有高度一致的期待，会把关系经营得踏实而可持续。'
+      },
+      AB: {
+        label: '黄金互补：A + B',
+        reason: '这是高质量的主内主外组合。A 负责开疆拓土，B 负责稳住后方。A 因为有兜底而敢于突破，B 因为有引领而看见更大世界，你们像两块咬合良好的拼图。'
+      }
+    }
+  },
+  {
+    key: 'C',
+    index: 1,
+    title: '💬 维度 2：情感沟通 (C 直球派 vs G 温和派)',
+    core: '情绪张力的缓冲与消化',
+    templates: {
+      CC: {
+        label: '坦诚局：C + C',
+        reason: '你们之间几乎没有猜心游戏。你敢说，我也敢接。即便冲突来得猛，问题通常也能被快速摊开和解决，关系的沟通效率很高。'
+      },
+      GG: {
+        label: '和平局：G + G',
+        reason: '你们都很在乎对方感受，遇到矛盾更倾向包容与退让。相处时情绪安全感强，不容易被尖锐表达刺伤，关系整体温和稳定。'
+      },
+      CG: {
+        label: '太极局：C + G',
+        reason: '这是一刚一柔的组合。C 负责精准指出问题，G 负责接住情绪并缓冲张力。一个讲理，一个讲爱，反而容易形成高质量沟通闭环。'
+      }
+    }
+  },
+  {
+    key: 'I',
+    index: 2,
+    title: '🌌 维度 3：亲密边界 (I 独立型 vs S 共生型)',
+    core: '空间需求的安全感确认',
+    templates: {
+      II: {
+        label: '高阶室友：I + I',
+        reason: '你们重视边界感，懂得距离产生美。你们可以给彼此足够的物理与心理空间，不会因为高频查岗而内耗，关系会更轻盈。'
+      },
+      SS: {
+        label: '连体婴儿：S + S',
+        reason: '你们都需要高频陪伴和强确认感。对你们来说，爱就是高度融合与彼此占有。只要节奏一致，这种关系会非常浓烈且有安全感。'
+      },
+      IS: {
+        label: '高张力磨合：I + S',
+        reason: '一个更需要空间，一个更需要靠近，天然会出现追与逃的张力。关键不是谁对谁错，而是能否提前约定边界与陪伴节奏；磨合成功会很稳，失配时也会很累。'
+      }
+    }
+  },
+  {
+    key: 'R',
+    index: 3,
+    title: '⚖️ 维度 4：价值底线 (R 原则型 vs F 变通型)',
+    core: '三观基石的稳固与包容',
+    templates: {
+      RR: {
+        label: '钢铁同盟：R + R',
+        reason: '你们对黑白边界和关系底线的判断很一致。在忠诚、道德和原则问题上容易形成稳定同盟，一旦建立信任，关系韧性会很强。'
+      },
+      FF: {
+        label: '松弛玩家：F + F',
+        reason: '你们都更重视弹性和现实感，不喜欢把关系变成刚性规训。你们对彼此的个体差异容忍度高，互动往往更轻松。'
+      },
+      RF: {
+        label: '秩序与自由：R + F',
+        reason: '这是秩序与弹性的组合。R 提供底线和稳定性，F 提供缓冲与灵活度。只要双方明确不可触碰边界，这组搭配反而容易形成长期平衡。'
+      }
+    }
+  }
+];
+
+function normalizeRoseCodeForReason(rawValue) {
+  if (typeof rawValue !== 'string') {
+    return '';
+  }
+
+  const value = rawValue.trim().toUpperCase();
+  if (!/^[AB][CG][IS][RF]$/.test(value)) {
+    return '';
+  }
+
+  return value;
+}
+
+function resolveReasonTemplate(templates, leftLetter, rightLetter) {
+  const directKey = `${leftLetter}${rightLetter}`;
+  if (templates[directKey]) {
+    return templates[directKey];
+  }
+
+  const reverseKey = `${rightLetter}${leftLetter}`;
+  if (templates[reverseKey]) {
+    return templates[reverseKey];
+  }
+
+  return null;
+}
+
+export function buildMatchDimensionReasons(selfRoseCodeInput, partnerRoseCodeInput) {
+  const selfRoseCode = normalizeRoseCodeForReason(selfRoseCodeInput);
+  const partnerRoseCode = normalizeRoseCodeForReason(partnerRoseCodeInput);
+  if (!selfRoseCode || !partnerRoseCode) {
+    return [];
+  }
+
+  return MATCH_REASON_DIMENSIONS.map((dimension, index) => {
+    const selfLetter = selfRoseCode[dimension.index];
+    const partnerLetter = partnerRoseCode[dimension.index];
+    const matchedTemplate = resolveReasonTemplate(dimension.templates, selfLetter, partnerLetter);
+
+    return {
+      dimension: dimension.key,
+      dimension_index: index + 1,
+      title: dimension.title,
+      core_label: dimension.core,
+      matchup_label: matchedTemplate?.label || `${selfLetter} + ${partnerLetter}`,
+      reason: matchedTemplate?.reason || '这一维的匹配结果建议结合完整问卷答题语境进一步判断。'
+    };
+  });
+}
 
 const QUESTION_DIMENSION_MAP = buildQuestionDimensionMap();
 const DIMENSION_MAX_DIFF = buildDimensionMaxDiff();
@@ -208,6 +340,13 @@ export function validateProfile(profile) {
 
   if (!isValidTargetGender(profile.target_gender)) {
     return { ok: false, msg: 'Invalid target gender' };
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(profile, 'allow_cross_school_match')
+    && typeof profile.allow_cross_school_match !== 'boolean'
+  ) {
+    return { ok: false, msg: 'allow_cross_school_match must be boolean' };
   }
 
   return { ok: true };
@@ -334,17 +473,6 @@ export function evaluateHardFilters(userA, userB) {
     return { passed: false, reason: 'profile_mismatch' };
   }
 
-  if (userA.rose.dimension_letters.I !== userB.rose.dimension_letters.I) {
-    return { passed: false, reason: 'boundary_type_conflict' };
-  }
-
-  for (const number of HARD_VETO_QUESTIONS) {
-    const diff = Math.abs(userA.answers[q(number)] - userB.answers[q(number)]);
-    if (diff >= 5) {
-      return { passed: false, reason: `veto_q${number}` };
-    }
-  }
-
   return { passed: true };
 }
 
@@ -357,25 +485,42 @@ export function computeWeightedDistance(scoresA, scoresB) {
   );
 }
 
-function computeCommunicationBonus(scoresA, scoresB) {
-  const c1 = scoresA.C;
-  const c2 = scoresB.C;
-  const trigger = (inRange(c1, 42, 52) && inRange(c2, 24, 35)) || (inRange(c2, 42, 52) && inRange(c1, 24, 35));
-  return trigger ? 5 : 0;
+function hasPowerAmbitionLoop(userA, userB) {
+  const aLeads = userA.answers[q(49)] >= 6 && ((userB.answers[q(2)] + userB.answers[q(6)]) >= 12);
+  const bLeads = userB.answers[q(49)] >= 6 && ((userA.answers[q(2)] + userA.answers[q(6)]) >= 12);
+  return aLeads || bLeads;
 }
 
-function computeTrajectoryBonus(userA, userB) {
-  const a1 = userA.rose.dimension_scores.A;
-  const a2 = userB.rose.dimension_scores.A;
-  const r1 = userA.rose.dimension_scores.R;
-  const r2 = userB.rose.dimension_scores.R;
-  const i1 = userA.rose.dimension_scores.I;
-  const i2 = userB.rose.dimension_scores.I;
+function hasChillCompatibility(userA, userB) {
+  return (
+    userA.answers[q(12)] >= 5
+    && userB.answers[q(12)] >= 5
+    && userA.answers[q(40)] >= 5
+    && userB.answers[q(40)] >= 5
+  );
+}
 
-  const oppositeTrajectory = (a1 > 40 && a2 < 40) || (a2 > 40 && a1 < 40);
-  const highAgreement = Math.abs(r1 - r2) <= 12 && Math.abs(i1 - i2) <= 8;
+function hasCommunicationBalance(userA, userB) {
+  return (
+    (userA.answers[q(27)] >= 5 && userB.answers[q(25)] >= 5)
+    || (userB.answers[q(27)] >= 5 && userA.answers[q(25)] >= 5)
+  );
+}
 
-  return oppositeTrajectory && highAgreement ? 3 : 0;
+function computeComplementaryBonus(userA, userB) {
+  let bonus = 0;
+
+  if (hasPowerAmbitionLoop(userA, userB)) {
+    bonus += 5;
+  }
+  if (hasChillCompatibility(userA, userB)) {
+    bonus += 3;
+  }
+  if (hasCommunicationBalance(userA, userB)) {
+    bonus += 4;
+  }
+
+  return bonus;
 }
 
 function roundToOneDecimal(value) {
@@ -398,8 +543,7 @@ export function computeMatchScore(userA, userB) {
   const distance = computeWeightedDistance(userA.rose.dimension_scores, userB.rose.dimension_scores);
   const baseRaw = Math.max(0, (1 - (distance / THEORETICAL_MAX_DISTANCE)) * 100);
 
-  const bonus = computeCommunicationBonus(userA.rose.dimension_scores, userB.rose.dimension_scores)
-    + computeTrajectoryBonus(userA, userB);
+  const bonus = computeComplementaryBonus(userA, userB);
 
   const finalRaw = Math.min(99.9, baseRaw + bonus);
 

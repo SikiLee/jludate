@@ -219,10 +219,10 @@ function Home() {
           className="relative z-10 text-center max-w-4xl px-4 flex flex-col items-center"
         >
           <div className="inline-block px-4 py-1.5 rounded-full border border-white/30 text-sm font-medium mb-6 bg-white/10 backdrop-blur-md">
-            {brandName} 校园专属
+            {brandName} 吉大专属灵魂契合平台
           </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">
-            让一段缘分<br />值得等待。
+            杏花佳节<br />吉遇良缘
           </h1>
           <p className="text-lg md:text-xl mb-12 font-light text-white/90 max-w-2xl mx-auto leading-relaxed">
             只需填写一份深度问卷，每{scheduleRevealLabel}，您将收到匹配结果，<br className="hidden md:block"/>并附上我们认为你们会合拍的理由。
@@ -233,12 +233,7 @@ function Home() {
           >
             {joinLabel}
           </button>
-          <button
-            onClick={() => navigate('/feedback?from=banner')}
-            className="mt-4 text-sm text-white/85 hover:text-white underline underline-offset-4 transition"
-          >
-            遇到问题或有建议？点此反馈
-          </button>
+        
         </motion.div>
       </section>
 
@@ -254,7 +249,7 @@ function Home() {
               <div>{String(timeLeft.seconds).padStart(2, '0')}<span className="text-sm block text-gray-400 font-sans tracking-normal mt-1">秒</span></div>
             </div>
           </div>
-          {showAnyMetric ? (
+          {/* {showAnyMetric ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
               {showRegisteredUsersMetric ? (
                 <div className="pt-8 md:pt-0">
@@ -275,7 +270,7 @@ function Home() {
                 </div>
               ) : null}
             </div>
-          ) : null}
+          ) : null} */}
         </div>
       </section>
 
@@ -286,8 +281,8 @@ function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', title: '填写深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法为您找到最契合的人。' },
-              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到对方的昵称、匹配度，以及合拍理由。点击「联系 TA」，我们将为您向对方发送简短的讯息。' },
-              { num: '03', title: '去见见 TA 吧！', desc: '剩下的交给你们自己，或许你们可以见面、散步、聊天，当然，一起约图也可以。' }
+              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到您与对方的匹配度以及合拍理由，决定是否进一步联系' },
+              { num: '03', title: '去见见TA吧!', desc: '真诚打招呼，慢慢了解彼此，把节奏交给你们自己。' }
             ].map((step, idx) => (
               <motion.div key={idx} whileHover={{ y: -10 }} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                 <div className="text-7xl font-black text-gray-50/80 absolute -top-4 -right-2 transition-transform group-hover:scale-110">{step.num}</div>
@@ -369,7 +364,7 @@ function Home() {
       </section>
 
       <footer className="bg-slate-950 py-10 text-center text-sm text-gray-500">
-        <p>© {new Date().getFullYear()} {brandName} Team. 校园匹配平台.</p>
+        <p>© {new Date().getFullYear()} {brandName} Team. 配吉友.</p>
       </footer>
     </div>
   );

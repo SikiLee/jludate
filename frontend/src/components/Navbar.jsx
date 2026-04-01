@@ -129,7 +129,7 @@ function Navbar() {
           {/* Navigation Area matches the image layout: Link + Pill Button */}
           <div className="flex items-center gap-6 sm:gap-8">
             <Link to="/" className={`text-sm sm:text-[15px] font-medium tracking-wide transition-colors ${textColor}`}>
-              关于
+              首页
             </Link>
 
             {commonLinks.map((link) => {
@@ -147,13 +147,13 @@ function Navbar() {
               );
             })}
 
-            <div className="relative" ref={roseMenuRef}>
+            {/* <div className="relative" ref={roseMenuRef}>
               <button
                 type="button"
                 onClick={() => setRoseMenuOpen((prev) => !prev)}
                 className={roseMenuButtonClass}
               >
-                ROSE恋爱人格
+                恋爱人格测试
                 <ChevronDown className={`w-4 h-4 transition-transform ${roseMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -164,18 +164,18 @@ function Navbar() {
                     onClick={() => setRoseMenuOpen(false)}
                     className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    ①测试ROSE人格
+                    ①开始恋爱人格测试
                   </Link>
                   <Link
                     to="/rose"
                     onClick={() => setRoseMenuOpen(false)}
                     className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    ②查看ROSE恋爱人格
+                    ②查看恋爱人格结果
                   </Link>
                 </div>
               ) : null}
-            </div>
+            </div> */}
 
             {authLinks.map((link) => {
               const isActive = location.pathname.startsWith(link.path);
@@ -204,7 +204,7 @@ function Navbar() {
                 to="/auth"
                 className={`flex items-center gap-1.5 px-6 py-2 sm:px-7 sm:py-2.5 rounded-full text-sm sm:text-[15px] font-bold transition-transform transform hover:-translate-y-0.5 tracking-wide ${buttonClass}`}
               >
-                登录
+                登录/注册
               </Link>
             )}
           </div>

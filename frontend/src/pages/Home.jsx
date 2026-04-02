@@ -1,9 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Clock, ShieldCheck, Target, ChevronDown } from 'lucide-react';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { getAccessToken } from '../lib/storage';
+
+const SakuraPetalsOverlay = React.memo(function SakuraPetalsOverlay({ baseCount = 36, containerClass = 'pointer-events-none fixed inset-0 z-0 overflow-hidden' }) {
+  const isReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const initialCount = useMemo(() => {
+    const viewportIsSmall = typeof window !== 'undefined' && window.innerWidth < 640;
+    return isReduced ? 0 : (viewportIsSmall ? Math.floor(baseCount * 0.5) : baseCount);
+  }, []); // 仅在挂载时计算一次，避免随父组件重渲染而重建
+
+  const petals = useMemo(() => Array.from({ length: initialCount }).map((_, index) => {
+    // 分段均匀分布：把 0-100 划分为 initialCount 份，每份内做微小抖动，避免扎堆
+    const segment = 100 / Math.max(1, initialCount);
+    const segmentStart = index * segment;
+    const jitter = (Math.random() * 0.8 + 0.1) * segment; // 10%-90% 的段内抖动
+    const left = Math.min(99.5, segmentStart + jitter);
+    const size = 10 + Math.random() * 18; // 10-28px
+    // 加快速度：缩短每片花瓣的下落持续时间
+    const duration = 6 + Math.random() * 9; // 6-15s
+    // 让挂载后立刻“飘满全屏”：用负延迟覆盖完整 duration，让每片在不同阶段出现
+    const delay = Math.random() * duration;
+    const opacity = 0.3 + Math.random() * 0.4; // 0.3-0.7（减少重绘）
+    const rotate = Math.random() * 360;
+    const sway = Math.random() < 0.5 ? -1 : 1;
+    return (
+      <svg
+        key={`petal-${index}`}
+        viewBox="0 0 32 32"
+        style={{
+          left: `${left}%`,
+          width: `${size}px`,
+          height: `${size * 1.2}px`,
+          animationDuration: `${duration}s`,
+          animationDelay: `${-delay}s`,
+          opacity,
+          transform: `rotate(${rotate}deg)`,
+          ['--sway-dir']: sway,
+          willChange: 'transform'
+        }}
+        className="absolute -top-10 animate-[sakura-fall_linear_infinite] text-roseTint/80 select-none"
+      >
+        <path
+          d="M16 2 C12 6, 10 10, 10 14 C10 18, 13 22, 16 30 C19 22, 22 18, 22 14 C22 10, 20 6, 16 2 Z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }), []); // 花瓣元素只生成一次
+
+  return isReduced ? null : (
+    <>
+      <style>{`
+        @keyframes sakura-fall {
+          0%   { transform: translate3d(0, -10vh, 0) rotate(0deg) }
+          25%  { transform: translate3d(calc(var(--sway-dir, 1) * -10px), 25vh, 0) rotate(90deg) }
+          50%  { transform: translate3d(calc(var(--sway-dir, 1) *  10px), 50vh, 0) rotate(180deg) }
+          75%  { transform: translate3d(calc(var(--sway-dir, 1) * -10px), 75vh, 0) rotate(270deg) }
+          100% { transform: translate3d(calc(var(--sway-dir, 1) *  10px), 110vh, 0) rotate(360deg) }
+        }
+      `}</style>
+      <div className={containerClass}>
+        {petals}
+      </div>
+    </>
+  );
+});
 
 function Home() {
   const navigate = useNavigate();
@@ -198,39 +265,34 @@ function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-pagePink font-xihei text-slate-900">
+    <div className="relative z-10 min-h-screen bg-pagePink font-xihei text-slate-900">
+      {/* 全页背景层（较淡，置底） */}
+      <SakuraPetalsOverlay baseCount={48} />
       
       {/* 1. Hero Section */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-szured text-white">
-        {homeHeroBackgroundUrl ? (
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${homeHeroBackgroundUrl})`, backgroundPosition: 'center top' }}
-          />
-        ) : null}
-        <div className={`absolute inset-0 ${homeHeroBackgroundUrl ? 'bg-[#8A1538]/70 mix-blend-multiply' : 'bg-[#8A1538]/90'}`}></div>
-        <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none" 
-             style={{ backgroundImage: 'radial-gradient(circle at top right, #ffffff 0%, transparent 60%)' }} />
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-pagePink text-slate-900">
+        {/* 首屏局部花瓣（覆盖在内容前，但不影响交互）——加密 */}
+        <SakuraPetalsOverlay baseCount={56} containerClass="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
         
-        {/* Soft bottom fade replacing the hard cut */}
-        <div className="absolute bottom-0 left-0 w-full h-48 md:h-[400px] bg-gradient-to-t from-white via-white/50 to-transparent pointer-events-none"></div>
+        {/* Feathered bottom fade into page background */}
+        <div className="absolute bottom-0 left-0 w-full h-48 md:h-[320px] bg-gradient-to-b from-transparent to-pagePink pointer-events-none"></div>
         
         <motion.div 
           initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.8 }}
-          className="relative z-10 text-center max-w-4xl px-4 flex flex-col items-center"
+          className="relative z-20 text-center max-w-4xl px-4 flex flex-col items-center"
         >
-          <div className="inline-block px-4 py-1.5 rounded-full border border-white/30 text-sm font-medium mb-6 bg-white/10 backdrop-blur-md">
-            JluDate
-          </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight font-ysong">
             杏花佳节<br />吉遇良缘
           </h1>
-          <p className="text-lg md:text-xl mb-12 font-light text-white/90 max-w-2xl mx-auto leading-relaxed">
-            只需填写一份深度问卷，每{scheduleRevealLabel}，您将收到匹配结果，<br className="hidden md:block"/>并附上我们认为你们会合拍的理由。
+          <div className="mb-4 font-ysong text-sm md:text-base" style={{ color: '#E8C5CF' }}>
+            For mails.jlu.edu.cn
+          </div>
+          <p className="text-lg md:text-xl mb-12 font-light max-w-2xl mx-auto leading-relaxed font-shsans" style={{ color: 'rgba(60,53,60,0.8)' }}>
+            只需填写一份深度问卷，每{scheduleRevealLabel}，<br />您将收到匹配结果，并附上我们认为你们会合拍的理由。
           </p>
           <button 
             onClick={() => navigate(joinTarget)}
-            className="px-8 py-4 bg-white text-szured font-bold rounded-full hover:bg-gray-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transform hover:-translate-y-1 text-lg"
+            className="px-8 py-4 bg-[#B54D69] text-white font-bold rounded-full hover:brightness-110 transition-all shadow-[0_8px_24px_rgba(181,77,105,0.35)] transform hover:-translate-y-0.5 text-lg"
           >
             {joinLabel}
           </button>
@@ -278,7 +340,7 @@ function Home() {
       {/* 3. How It Works */}
       <section className="py-24 bg-transparent">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">使用流程</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">如何参与</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', title: '填写深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法为您找到最契合的人。' },
@@ -289,10 +351,18 @@ function Home() {
                 <div className="text-7xl font-black text-gray-50/80 absolute -top-4 -right-2 transition-transform group-hover:scale-110">{step.num}</div>
                 <div className="relative z-10">
                   <h3 className="text-xl font-bold mb-4 text-gray-900 flex items-center gap-3 font-ysong">
-                    <span className="w-8 h-8 rounded-full bg-szured text-white flex items-center justify-center text-sm">{step.num}</span>
+                    <span
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                        step.num === '01' || step.num === '02' || step.num === '03'
+                          ? 'bg-roseLight text-szured'
+                          : 'bg-szured text-white'
+                      }`}
+                    >
+                      {step.num}
+                    </span>
                     {step.title}
                   </h3>
-                  <p className="text-[#3C353C] leading-relaxed">{step.desc}</p>
+                  <p className="leading-relaxed" style={{ color: 'rgba(60,53,60,0.75)' }}>{step.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -303,7 +373,7 @@ function Home() {
       {/* 4. Why Choose Us */}
       <section className="py-24 bg-transparent">
         <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">为什么选择我们</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">我们的特别</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {whyChooseItems.map((item, idx) => {
               const IconComponent = iconMap[item.icon] || Heart;
@@ -315,7 +385,7 @@ function Home() {
                 >
                   <IconComponent className="w-8 h-8 text-szured mb-6" />
                   <h3 className="text-xl font-bold mb-3 font-ysong">{item.title}</h3>
-                  <p className="text-[#3C353C]">{applySiteTokens(item.desc)}</p>
+                  <p style={{ color: 'rgba(60,53,60,0.75)' }}>{applySiteTokens(item.desc)}</p>
                 </motion.div>
               );
             })}
@@ -334,7 +404,7 @@ function Home() {
                 whileHover={{ y: -10 }}
                 className="bg-cardIvory rounded-2xl border border-[#E8C5CF]/60 overflow-hidden relative group hover:shadow-xl transition-all duration-300"
               >
-                <button 
+                <button
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                   className="w-full px-6 py-5 text-left flex justify-between items-center font-bold text-gray-900 font-ysong"
                 >
@@ -343,11 +413,11 @@ function Home() {
                 </button>
                 <AnimatePresence>
                   {openFaq === idx && (
-                    <motion.div 
+                    <motion.div
                       initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      className="px-6 pb-5 text-[#3C353C]"
+                      className="px-6 pb-5"
                     >
-                      {applySiteTokens(faq.a)}
+                      <span style={{ color: 'rgba(60,53,60,0.75)' }}>{applySiteTokens(faq.a)}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -359,9 +429,11 @@ function Home() {
 
       {/* 6. Footer CTA */}
       <section className="py-32 text-center px-4 relative overflow-hidden bg-pagePink">
-        <div className="relative z-10">
+        {/* CTA 区局部花瓣（覆盖在内容前） */}
+        <SakuraPetalsOverlay baseCount={24} containerClass="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
+        <div className="relative z-20">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 font-ysong">准备好了吗？</h2>
-          <p className="text-xl text-slate-600 mb-10 font-light font-xihei">每{scheduleRevealLabel}，为你揭晓最契合的 TA。</p>
+          <p className="text-xl text-slate-600 mb-10 font-light font-xihei">每{scheduleRevealLabel}，为你揭晓吉大校园里最契合的TA。</p>
           <button 
             onClick={() => navigate(joinTarget)}
             className="px-10 py-5 rounded-full font-bold text-white bg-[#B54D69] hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_8px_24px_rgba(0,0,0,0.2)] text-lg font-xihei"
@@ -373,8 +445,11 @@ function Home() {
       </section>
 
       <footer className="bg-[#582333] py-10 text-center text-sm text-gray-500">
-
-        <p>© {new Date().getFullYear()} JluDate Team. .</p>
+        <div className="mb-3">
+          <h3 className="font-ysong text-white/90 text-2xl md:text-3xl font-bold">JLU Date</h3>
+          <p className="mt-2 font-xihei" style={{ color: 'rgba(197,132,149,0.62)' }}>在吉大，遇见有缘的TA。</p>
+        </div>
+        <p style={{ color: 'rgba(204,120,140,0.6)' }}>© {new Date().getFullYear()} JluDate Team.</p>
       </footer>
     </div>
   );

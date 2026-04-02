@@ -18,6 +18,7 @@ export default {
         ysong: ['"方正雅宋"', 'FZYaSong', 'STSong', 'Songti SC', 'serif'],
         xihei: ['"华文细黑"', 'STXihei', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'sans-serif'],
         shserif: ['"Source Han Serif SC"', '"Noto Serif SC"', 'Songti SC', 'STSong', 'serif'],
+        shsans: ['"Source Han Sans SC"', '"Noto Sans SC"', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
       }
     },
   },

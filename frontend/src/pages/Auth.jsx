@@ -192,10 +192,25 @@ function Auth() {
         className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-szured/10 w-full max-w-md p-8 border border-white"
       >
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-extrabold text-slate-800 mb-2">
+          <h2
+            className={`text-3xl font-extrabold text-slate-800 mb-2 ${
+              isLogin ? 'cursor-pointer select-none' : ''
+            }`}
+            role={isLogin ? 'button' : undefined}
+            tabIndex={isLogin ? 0 : undefined}
+            onClick={isLogin ? () => navigate('/') : undefined}
+            onKeyDown={
+              isLogin
+                ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') navigate('/');
+                }
+                : undefined
+            }
+            aria-label={isLogin ? '返回首页' : undefined}
+          >
             {isLogin ? '配吉友' : isRegister ? `加入 ${siteConfig.brand_name}` : '找回密码'}
           </h2>
-          <p className="text-slate-500 text-sm">在吉大，遇见有缘之人</p>
+          <p className="text-slate-500 text-sm">在吉大，遇见有缘的TA</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

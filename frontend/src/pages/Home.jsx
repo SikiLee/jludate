@@ -198,7 +198,7 @@ function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900">
+    <div className="min-h-screen bg-pagePink font-xihei text-slate-900">
       
       {/* 1. Hero Section */}
       <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-szured text-white">
@@ -222,7 +222,7 @@ function Home() {
           <div className="inline-block px-4 py-1.5 rounded-full border border-white/30 text-sm font-medium mb-6 bg-white/10 backdrop-blur-md">
             JluDate
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight font-ysong">
             杏花佳节<br />吉遇良缘
           </h1>
           <p className="text-lg md:text-xl mb-12 font-light text-white/90 max-w-2xl mx-auto leading-relaxed">
@@ -239,7 +239,7 @@ function Home() {
       </section>
 
       {/* 2. Countdown & Statistics */}
-      <section className="py-16 bg-white border-b border-gray-100">
+      <section className="py-16 bg-transparent border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
             <h3 className="text-sm font-bold tracking-widest text-gray-400 uppercase mb-4">距下次配对揭晓</h3>
@@ -276,19 +276,19 @@ function Home() {
       </section>
 
       {/* 3. How It Works */}
-      <section className="py-24 bg-gray-50">
+      <section className="py-24 bg-transparent">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900">使用流程</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">使用流程</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', title: '填写深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法为您找到最契合的人。' },
               { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到您与对方的匹配度以及合拍理由，决定是否进一步联系，只有得到您的允许，我们才会将您的邮箱发送给对方' },
               { num: '03', title: '去见见TA吧!', desc: '真诚打招呼，慢慢了解彼此，把节奏交给你们自己。或许你们可以见面、散步、聊天，当然，一起约图也可以。' }
             ].map((step, idx) => (
-              <motion.div key={idx} whileHover={{ y: -10 }} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+              <motion.div key={idx} whileHover={{ y: -10 }} className="bg-cardIvory rounded-3xl p-8 shadow-sm border border-[#E8C5CF]/60 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                 <div className="text-7xl font-black text-gray-50/80 absolute -top-4 -right-2 transition-transform group-hover:scale-110">{step.num}</div>
                 <div className="relative z-10">
-                  <h3 className="text-xl font-bold mb-4 text-gray-900 flex items-center gap-3">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900 flex items-center gap-3 font-ysong">
                     <span className="w-8 h-8 rounded-full bg-szured text-white flex items-center justify-center text-sm">{step.num}</span>
                     {step.title}
                   </h3>
@@ -301,16 +301,16 @@ function Home() {
       </section>
 
       {/* 4. Why Choose Us */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-transparent">
         <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900">为什么选择我们</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">为什么选择我们</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {whyChooseItems.map((item, idx) => {
               const IconComponent = iconMap[item.icon] || Heart;
               return (
-                <div key={`why-choose-${idx}`} className="bg-slate-50 p-8 rounded-3xl border border-slate-100 hover:bg-slate-100 transition-colors">
+                <div key={`why-choose-${idx}`} className="bg-cardIvory p-8 rounded-3xl border border-[#E8C5CF]/60 hover:bg-[#F1EEE6] transition-colors">
                   <IconComponent className="w-8 h-8 text-szured mb-6" />
-                  <h3 className="text-xl font-bold mb-3">{item.title}</h3>
+                  <h3 className="text-xl font-bold mb-3 font-ysong">{item.title}</h3>
                   <p className="text-gray-600">{applySiteTokens(item.desc)}</p>
                 </div>
               );
@@ -320,15 +320,15 @@ function Home() {
       </section>
 
       {/* 5. FAQ */}
-      <section className="py-24 bg-gray-50">
+      <section className="py-24 bg-transparent">
         <div className="max-w-3xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900">常见问题</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900 font-ysong">常见问题</h2>
           <div className="space-y-4">
             {faqs.map((faq, idx) => (
-              <div key={idx} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div key={idx} className="bg-cardIvory rounded-2xl border border-[#E8C5CF]/60 overflow-hidden">
                 <button 
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full px-6 py-5 text-left flex justify-between items-center font-bold text-gray-900 hover:bg-gray-50 transition-colors"
+                  className="w-full px-6 py-5 text-left flex justify-between items-center font-bold text-gray-900 hover:bg-[#F1EEE6] transition-colors font-ysong"
                 >
                   {applySiteTokens(faq.q)}
                   <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openFaq === idx ? 'rotate-180' : ''}`} />
@@ -350,14 +350,13 @@ function Home() {
       </section>
 
       {/* 6. Footer CTA */}
-      <section className="py-32 bg-slate-900 text-center px-4 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-szured via-slate-900 to-slate-900"></div>
+      <section className="py-32 text-center px-4 relative overflow-hidden bg-pagePink">
         <div className="relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">准备好了吗？</h2>
-          <p className="text-xl text-gray-400 mb-10 font-light">每{scheduleRevealLabel}，为你揭晓最契合的 TA。</p>
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 font-ysong">准备好了吗？</h2>
+          <p className="text-xl text-slate-600 mb-10 font-light font-xihei">每{scheduleRevealLabel}，为你揭晓最契合的 TA。</p>
           <button 
             onClick={() => navigate(joinTarget)}
-            className="px-10 py-5 bg-szured text-white font-bold rounded-full hover:bg-[#a61a44] transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(138,21,56,0.4)] text-lg"
+            className="px-10 py-5 rounded-full font-bold text-white bg-[#B54D69] hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_8px_24px_rgba(0,0,0,0.2)] text-lg font-xihei"
           >
 
             {joinLabel}
@@ -365,7 +364,7 @@ function Home() {
         </div>
       </section>
 
-      <footer className="bg-slate-950 py-10 text-center text-sm text-gray-500">
+      <footer className="bg-[#582333] py-10 text-center text-sm text-gray-500">
 
         <p>© {new Date().getFullYear()} JluDate Team. .</p>
       </footer>

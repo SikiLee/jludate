@@ -90,7 +90,7 @@ function Navbar() {
     
   const buttonClass = isTransparent
     ? 'bg-white text-slate-900 hover:bg-slate-100 shadow-[0_2px_15px_rgba(255,255,255,0.15)]'
-    : 'bg-slate-900 text-white hover:bg-black shadow-md shadow-slate-900/20';
+    : 'bg-[#B54D69] text-white hover:brightness-110 shadow-md shadow-slate-900/20';
 
   // Build the dynamic nav links (like Match, Survey, Admin) 
   // We'll keep them understated if the user is just browsing the transparent hero.

@@ -292,7 +292,7 @@ function Home() {
                     <span className="w-8 h-8 rounded-full bg-szured text-white flex items-center justify-center text-sm">{step.num}</span>
                     {step.title}
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">{step.desc}</p>
+                  <p className="text-[#3C353C] leading-relaxed">{step.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -308,11 +308,15 @@ function Home() {
             {whyChooseItems.map((item, idx) => {
               const IconComponent = iconMap[item.icon] || Heart;
               return (
-                <div key={`why-choose-${idx}`} className="bg-cardIvory p-8 rounded-3xl border border-[#E8C5CF]/60 hover:bg-[#F1EEE6] transition-colors">
+                <motion.div
+                  key={`why-choose-${idx}`}
+                  whileHover={{ y: -10 }}
+                  className="bg-cardIvory p-8 rounded-3xl border border-[#E8C5CF]/60 relative overflow-hidden group hover:shadow-xl transition-all duration-300"
+                >
                   <IconComponent className="w-8 h-8 text-szured mb-6" />
                   <h3 className="text-xl font-bold mb-3 font-ysong">{item.title}</h3>
-                  <p className="text-gray-600">{applySiteTokens(item.desc)}</p>
-                </div>
+                  <p className="text-[#3C353C]">{applySiteTokens(item.desc)}</p>
+                </motion.div>
               );
             })}
           </div>
@@ -325,10 +329,14 @@ function Home() {
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900 font-ysong">常见问题</h2>
           <div className="space-y-4">
             {faqs.map((faq, idx) => (
-              <div key={idx} className="bg-cardIvory rounded-2xl border border-[#E8C5CF]/60 overflow-hidden">
+              <motion.div
+                key={idx}
+                whileHover={{ y: -10 }}
+                className="bg-cardIvory rounded-2xl border border-[#E8C5CF]/60 overflow-hidden relative group hover:shadow-xl transition-all duration-300"
+              >
                 <button 
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full px-6 py-5 text-left flex justify-between items-center font-bold text-gray-900 hover:bg-[#F1EEE6] transition-colors font-ysong"
+                  className="w-full px-6 py-5 text-left flex justify-between items-center font-bold text-gray-900 font-ysong"
                 >
                   {applySiteTokens(faq.q)}
                   <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openFaq === idx ? 'rotate-180' : ''}`} />
@@ -337,13 +345,13 @@ function Home() {
                   {openFaq === idx && (
                     <motion.div 
                       initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      className="px-6 pb-5 text-gray-600"
+                      className="px-6 pb-5 text-[#3C353C]"
                     >
                       {applySiteTokens(faq.a)}
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

@@ -20,20 +20,21 @@ function Home() {
     }
   });
   const [countdownDeadlineMs, setCountdownDeadlineMs] = useState(null);
-  const brandName = siteConfig.brand_name || 'unidate';
+  const brandName = siteConfig.brand_name || '配吉友';
   const allowedDomains = Array.isArray(siteConfig.allowed_email_domains) && siteConfig.allowed_email_domains.length > 0
     ? siteConfig.allowed_email_domains
-    : ['szu.edu.cn'];
+    : ['mails.jlu.edu.cn'];
   const domainText = allowedDomains.map((item) => `@${item}`).join(' / ');
   const homeHeroBackgroundUrl = siteConfig.home_hero_background_url;
   const isLoggedIn = Boolean(getAccessToken());
-  const joinTarget = '/survey';
-  const joinLabel = isLoggedIn ? '进入测试' : '先测类型';
+
+  const joinTarget = '/auth';
+  const joinLabel = '立即加入';
   const matchSchedule = siteConfig.match_schedule && typeof siteConfig.match_schedule === 'object'
     ? siteConfig.match_schedule
-    : { day_of_week: 2, hour: 21, minute: 0 };
-  const scheduleDay = Number.isInteger(matchSchedule.day_of_week) ? matchSchedule.day_of_week : 2;
-  const scheduleHour = Number.isInteger(matchSchedule.hour) ? matchSchedule.hour : 21;
+    : { day_of_week: 5, hour: 20, minute: 0 };
+  const scheduleDay = Number.isInteger(matchSchedule.day_of_week) ? matchSchedule.day_of_week : 5;
+  const scheduleHour = Number.isInteger(matchSchedule.hour) ? matchSchedule.hour : 20;
   const scheduleMinute = Number.isInteger(matchSchedule.minute) ? matchSchedule.minute : 0;
   const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const weekdayLabel = weekdayNames[scheduleDay] || '周二';
@@ -148,14 +149,14 @@ function Home() {
     : [
       {
         q: '使用流程是什么？',
-        a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周二晚九点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
+        a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周五晚八点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
       },
       {
         q: '你们如何处理我的数据？',
-        a: '我们绝不出售您的数据。您的问卷答案仅用于匹配，且在数据库中以随机 ID 存储，与您的邮箱地址分开保存。即使是维护团队，也无法直接将两者关联起来。详见隐私协议。'
+        a: '我们绝不泄露您的数据。您的问卷答案仅用于匹配，且在数据库中以随机 ID 存储，与您的邮箱地址分开保存。即使是维护团队，也无法直接将两者关联起来。详见隐私协议。'
       },
       {
-        q: '{XXDate} 的使用规范是什么？',
+        q: '配吉友 的使用规范是什么？',
         a: '彼此真诚，互相尊重。'
       },
       {
@@ -170,7 +171,7 @@ function Home() {
       {
         icon: 'clock',
         title: '每周一次',
-        desc: '没有"左滑右滑"。每周二晚九点统一揭晓，一周至多一次配对，让等待变得有意义。'
+        desc: '没有"左滑右滑"。每周五晚八点统一揭晓，一周至多一次配对，让等待变得有意义。'
       },
       {
         icon: 'target',
@@ -219,7 +220,7 @@ function Home() {
           className="relative z-10 text-center max-w-4xl px-4 flex flex-col items-center"
         >
           <div className="inline-block px-4 py-1.5 rounded-full border border-white/30 text-sm font-medium mb-6 bg-white/10 backdrop-blur-md">
-            {brandName} 吉大专属灵魂契合平台
+            JluDate
           </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">
             杏花佳节<br />吉遇良缘
@@ -281,8 +282,8 @@ function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', title: '填写深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法为您找到最契合的人。' },
-              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到您与对方的匹配度以及合拍理由，决定是否进一步联系' },
-              { num: '03', title: '去见见TA吧!', desc: '真诚打招呼，慢慢了解彼此，把节奏交给你们自己。' }
+              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到您与对方的匹配度以及合拍理由，决定是否进一步联系，只有得到您的允许，我们才会将您的邮箱发送给对方' },
+              { num: '03', title: '去见见TA吧!', desc: '真诚打招呼，慢慢了解彼此，把节奏交给你们自己。或许你们可以见面、散步、聊天，当然，一起约图也可以。' }
             ].map((step, idx) => (
               <motion.div key={idx} whileHover={{ y: -10 }} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                 <div className="text-7xl font-black text-gray-50/80 absolute -top-4 -right-2 transition-transform group-hover:scale-110">{step.num}</div>
@@ -358,16 +359,19 @@ function Home() {
             onClick={() => navigate(joinTarget)}
             className="px-10 py-5 bg-szured text-white font-bold rounded-full hover:bg-[#a61a44] transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(138,21,56,0.4)] text-lg"
           >
-            {isLoggedIn ? '进入测试' : `加入 ${brandName}`}
+
+            {joinLabel}
           </button>
         </div>
       </section>
 
       <footer className="bg-slate-950 py-10 text-center text-sm text-gray-500">
-        <p>© {new Date().getFullYear()} {brandName} Team. 配吉友.</p>
+
+        <p>© {new Date().getFullYear()} JluDate Team. .</p>
       </footer>
     </div>
   );
 }
 
 export default Home;
+

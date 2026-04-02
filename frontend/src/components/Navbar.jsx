@@ -15,7 +15,7 @@ function Navbar() {
   const [, setAuthVersion] = useState(0);
   const token = getAccessToken();
   const isAdmin = getIsAdmin();
-  const brandName = siteConfig?.brand_name || 'unidate';
+  const brandName = siteConfig?.brand_name || '配吉友';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -94,7 +94,7 @@ function Navbar() {
 
   // Build the dynamic nav links (like Match, Survey, Admin) 
   // We'll keep them understated if the user is just browsing the transparent hero.
-  const commonLinks = [{ path: '/feedback', label: '反馈' }];
+  const commonLinks = [];
   const authLinks = [];
   if (token) {
     authLinks.push({ path: '/match', label: '心动匹配' });

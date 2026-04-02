@@ -4,8 +4,8 @@ import path from 'node:path';
 import { normalizeAllowedEmailDomains } from './request.js';
 
 export const SHANGHAI_TIME_ZONE = 'Asia/Shanghai';
-export const DEFAULT_BRAND_NAME = 'unidate';
-const FALLBACK_ALLOWED_EMAIL_DOMAINS = Object.freeze(['szu.edu.cn']);
+export const DEFAULT_BRAND_NAME = '配吉友';
+const FALLBACK_ALLOWED_EMAIL_DOMAINS = Object.freeze(['mails.jlu.edu.cn']);
 
 function parseDefaultAllowedEmailDomains(rawValue) {
   if (typeof rawValue !== 'string') {
@@ -49,15 +49,15 @@ export const DEFAULT_ALLOWED_EMAIL_DOMAINS = Object.freeze(
   parseDefaultAllowedEmailDomains(process.env.DEFAULT_ALLOWED_EMAIL_DOMAINS)
 );
 export const DEFAULT_MATCH_SCHEDULE = Object.freeze({
-  day_of_week: 2,
-  hour: 21,
+  day_of_week: 5,
+  hour: 20,
   minute: 0,
   timezone: SHANGHAI_TIME_ZONE
 });
 export const DEFAULT_FAQ_ITEMS = [
   {
     q: '使用流程是什么？',
-    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周二晚九点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
+    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周五晚八点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
   },
   {
     q: '你们如何处理我的数据？',
@@ -76,7 +76,7 @@ export const DEFAULT_WHY_CHOOSE_US_ITEMS = [
   {
     icon: 'clock',
     title: '每周一次',
-    desc: '没有"左滑右滑"。每周二晚九点统一揭晓，一周至多一次配对，让等待变得有意义。'
+    desc: '没有"左滑右滑"。每周五晚八点统一揭晓，一周至多一次配对，让等待变得有意义。'
   },
   {
     icon: 'target',

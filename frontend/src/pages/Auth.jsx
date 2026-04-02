@@ -94,7 +94,7 @@ function resolvePrimaryDomain(rules) {
     return `your.${wildcardRule.slice(2)}`;
   }
 
-  return 'szu.edu.cn';
+  return 'mails.jlu.edu.cn';
 }
 
 function Auth() {
@@ -109,7 +109,7 @@ function Auth() {
 
   const allowedDomains = Array.isArray(siteConfig.allowed_email_domains) && siteConfig.allowed_email_domains.length > 0
     ? siteConfig.allowed_email_domains
-    : ['szu.edu.cn'];
+    : ['mails.jlu.edu.cn'];
   const allowedDomainRules = normalizeAllowedDomainRules(allowedDomains);
   const isLogin = authMode === 'login';
   const isRegister = authMode === 'register';
@@ -193,7 +193,7 @@ function Auth() {
       >
         <div className="text-center mb-8">
           <h2 className="text-3xl font-extrabold text-slate-800 mb-2">
-            {isLogin ? '欢迎回来' : isRegister ? `加入 ${siteConfig.brand_name}` : '找回密码'}
+            {isLogin ? '配吉友' : isRegister ? `加入 ${siteConfig.brand_name}` : '找回密码'}
           </h2>
           <p className="text-slate-500 text-sm">在吉大，遇见有缘之人</p>
         </div>

@@ -45,7 +45,7 @@ function ConfigSection({ title, defaultOpen = false, children }) {
 const DEFAULT_FAQ_ITEMS = [
   {
     q: '使用流程是什么？',
-    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周二晚九点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
+    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周五晚八点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
   },
   {
     q: '你们如何处理我的数据？',
@@ -82,7 +82,7 @@ const DEFAULT_WHY_CHOOSE_US_ITEMS = [
   {
     icon: 'clock',
     title: '每周一次',
-    desc: '没有"左滑右滑"。每周二晚九点统一揭晓，一周至多一次配对，让等待变得有意义。'
+    desc: '没有"左滑右滑"。每周五晚八点统一揭晓，一周至多一次配对，让等待变得有意义。'
   },
   {
     icon: 'target',
@@ -207,9 +207,9 @@ function AdminSiteSettings() {
   const [uploading, setUploading] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
   const [form, setForm] = useState({
-    brand_name: 'unidate',
-    allowed_email_domains_input: 'szu.edu.cn',
-    match_schedule: { day_of_week: 2, hour: 21, minute: 0, timezone: 'Asia/Shanghai' },
+    brand_name: '配吉友',
+    allowed_email_domains_input: 'mails.jlu.edu.cn',
+    match_schedule: { day_of_week: 5, hour: 20, minute: 0, timezone: 'Asia/Shanghai' },
     cross_school_matching_enabled: false,
     home_metrics_visibility: DEFAULT_HOME_METRICS_VISIBILITY,
     email_templates: DEFAULT_EMAIL_TEMPLATES,
@@ -225,10 +225,10 @@ function AdminSiteSettings() {
   };
 
   const applyPayload = (payload) => {
-    const brandName = payload?.brand_name || 'unidate';
+    const brandName = payload?.brand_name || '配吉友';
     const domainList = Array.isArray(payload?.allowed_email_domains) && payload.allowed_email_domains.length > 0
       ? payload.allowed_email_domains
-      : ['szu.edu.cn'];
+      : ['mails.jlu.edu.cn'];
     const whyChooseUsItems = normalizeWhyChooseUsItems(payload?.why_choose_us_items);
     const faqItems = normalizeFaqItems(payload?.faq_items);
     const homeMetricsVisibility = normalizeHomeMetricsVisibility(payload?.home_metrics_visibility);
@@ -242,10 +242,10 @@ function AdminSiteSettings() {
     const matchSchedule = {
       day_of_week: Number.isInteger(payloadSchedule.day_of_week) && payloadSchedule.day_of_week >= 0 && payloadSchedule.day_of_week <= 6
         ? payloadSchedule.day_of_week
-        : 2,
+        : 5,
       hour: Number.isInteger(payloadSchedule.hour) && payloadSchedule.hour >= 0 && payloadSchedule.hour <= 23
         ? payloadSchedule.hour
-        : 21,
+        : 20,
       minute: Number.isInteger(payloadSchedule.minute) && payloadSchedule.minute >= 0 && payloadSchedule.minute <= 59
         ? payloadSchedule.minute
         : 0,
@@ -523,7 +523,7 @@ function AdminSiteSettings() {
             value={form.allowed_email_domains_input}
             onChange={(e) => setForm((prev) => ({ ...prev, allowed_email_domains_input: e.target.value }))}
             className="w-full max-w-2xl min-h-[120px] px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 outline-none transition font-mono text-sm"
-            placeholder={'每行一个域名或通配规则，例如:\nszu.edu.cn\nthu.edu.cn\n*.edu.cn'}
+            placeholder={'每行一个域名或通配规则，例如:\nmails.jlu.edu.cn\nthu.edu.cn\n*.edu.cn'}
           />
         </section>
 

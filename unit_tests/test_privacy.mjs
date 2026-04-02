@@ -34,12 +34,12 @@ test('email lookup hash is stable with normalization', () => {
 });
 
 test('resolveUserEmail can decode encrypted email payload', () => {
-  const payload = buildEncryptedEmailPayload('enc_user@szu.edu.cn');
+  const payload = buildEncryptedEmailPayload('enc_user@mails.jlu.edu.cn');
   const resolved = resolveUserEmail({
     email: null,
     email_ciphertext: payload.email_ciphertext,
     email_key_version: payload.email_key_version
   });
 
-  assert.equal(resolved, 'enc_user@szu.edu.cn');
+  assert.equal(resolved, 'enc_user@mails.jlu.edu.cn');
 });

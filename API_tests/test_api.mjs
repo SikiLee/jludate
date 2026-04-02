@@ -31,7 +31,7 @@ function normalizeDomainRule(rawValue) {
 
 function resolveTestEmailDomain(rawRules) {
   if (!Array.isArray(rawRules)) {
-    return 'szu.edu.cn';
+    return 'mails.jlu.edu.cn';
   }
 
   const rules = rawRules
@@ -48,7 +48,7 @@ function resolveTestEmailDomain(rawRules) {
     return `test.${wildcard.slice(2)}`;
   }
 
-  return 'szu.edu.cn';
+  return 'mails.jlu.edu.cn';
 }
 
 function buildAnswers(defaultValue = 4) {

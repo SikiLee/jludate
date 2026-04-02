@@ -9,21 +9,21 @@ import { validateBackgroundUploadFile, validateSiteSettingsPayload } from '../ba
 
 test('normalizeEmailDomain handles casing, @ prefix and invalid values', () => {
   assert.equal(normalizeEmailDomain('@THU.edu.cn'), 'thu.edu.cn');
-  assert.equal(normalizeEmailDomain('szu.edu.cn'), 'szu.edu.cn');
+  assert.equal(normalizeEmailDomain('mails.jlu.edu.cn'), 'mails.jlu.edu.cn');
   assert.equal(normalizeEmailDomain('bad_domain'), '');
   assert.equal(normalizeEmailDomain('bad..edu.cn'), '');
 });
 
 test('normalizeAllowedEmailDomains dedupes and filters invalid domains', () => {
-  const result = normalizeAllowedEmailDomains(['@szu.edu.cn', 'THU.edu.cn', 'thu.edu.cn', '*.edu.cn', '*.EDU.cn', 'bad_domain']);
-  assert.deepEqual(result, ['szu.edu.cn', 'thu.edu.cn', '*.edu.cn']);
+  const result = normalizeAllowedEmailDomains(['@mails.jlu.edu.cn', 'THU.edu.cn', 'thu.edu.cn', '*.edu.cn', '*.EDU.cn', 'bad_domain']);
+  assert.deepEqual(result, ['mails.jlu.edu.cn', 'thu.edu.cn', '*.edu.cn']);
 });
 
 test('isAllowedSchoolEmail validates against white list', () => {
-  const domains = ['szu.edu.cn', 'thu.edu.cn', '*.edu.cn'];
-  assert.equal(isAllowedSchoolEmail('user@szu.edu.cn', domains), true);
+  const domains = ['mails.jlu.edu.cn', 'thu.edu.cn', '*.edu.cn'];
+  assert.equal(isAllowedSchoolEmail('user@mails.jlu.edu.cn', domains), true);
   assert.equal(isAllowedSchoolEmail('USER@THU.EDU.CN', domains), true);
-  assert.equal(isAllowedSchoolEmail('alice@email.szu.edu.cn', domains), true);
+  assert.equal(isAllowedSchoolEmail('alice@email.mails.jlu.edu.cn', domains), true);
   assert.equal(isAllowedSchoolEmail('user@gmail.com', domains), false);
   assert.equal(isAllowedSchoolEmail('not-an-email', domains), false);
 });
@@ -31,7 +31,7 @@ test('isAllowedSchoolEmail validates against white list', () => {
 test('validateSiteSettingsPayload requires valid brand and domain list', () => {
   const ok = validateSiteSettingsPayload({
     brand_name: 'THUDate',
-    allowed_email_domains: ['thu.edu.cn', '@szu.edu.cn'],
+    allowed_email_domains: ['thu.edu.cn', '@mails.jlu.edu.cn'],
     match_schedule: { day_of_week: 3, hour: 20, minute: 30 },
     email_templates: {
       verification: {
@@ -52,7 +52,7 @@ test('validateSiteSettingsPayload requires valid brand and domain list', () => {
     ]
   });
   assert.equal(ok.ok, true);
-  assert.deepEqual(ok.data.allowed_email_domains, ['thu.edu.cn', 'szu.edu.cn']);
+  assert.deepEqual(ok.data.allowed_email_domains, ['thu.edu.cn', 'mails.jlu.edu.cn']);
   assert.deepEqual(ok.data.match_schedule, { day_of_week: 3, hour: 20, minute: 30, timezone: 'Asia/Shanghai' });
   assert.equal(ok.data.cross_school_matching_enabled, true);
   assert.deepEqual(ok.data.why_choose_us_items, [{ icon: 'clock', title: '每周一次', desc: '每周揭晓一次' }]);

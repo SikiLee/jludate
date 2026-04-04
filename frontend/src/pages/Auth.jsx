@@ -208,7 +208,7 @@ function Auth() {
             }
             aria-label={isLogin ? '返回首页' : undefined}
           >
-            {isLogin ? '配吉友' : isRegister ? `加入 ${siteConfig.brand_name}` : '找回密码'}
+            {isLogin ? '配吉友 | JLUDate' : isRegister ? `加入 ${siteConfig.brand_name}` : '找回密码'}
           </h2>
           <p className="text-slate-500 text-sm">在吉大，遇见有缘的TA</p>
         </div>
@@ -267,7 +267,7 @@ function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-szured hover:bg-szuredDark text-white rounded-xl font-bold shadow-lg shadow-szured/20 transition flex justify-center items-center disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-ctaRose hover:bg-ctaRoseHover text-white rounded-xl font-bold shadow-lg shadow-[rgba(224,154,173,0.26)] transition flex justify-center items-center disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? '登录' : isRegister ? '注册' : '重置密码')}
           </button>

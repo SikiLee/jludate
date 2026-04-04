@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Mail, LogOut, ChevronDown } from 'lucide-react';
+import { LogOut, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clearAuthStorage, getAccessToken, getIsAdmin } from '../lib/storage';
 import { useSiteConfig } from '../context/SiteConfigContext';
@@ -81,16 +81,17 @@ function Navbar() {
   const isHome = location.pathname === '/';
   const isTransparent = isHome && !scrolled;
 
-  // Derive text/button styles based on background context
-  const textColor = isTransparent ? 'text-white/90 hover:text-white' : 'text-slate-600 hover:text-slate-900';
-  const logoColor = isTransparent ? 'text-white' : 'text-slate-900';
+  // 首屏透明导航：与主文案副标题统一为中灰 #4a4a5e，避免纯黑抢主标题对比
+  const textColor = isTransparent ? 'text-[#4a4a5e] hover:text-[#3d3d50]' : 'text-slate-600 hover:text-slate-900';
+  const logoColor = isTransparent ? 'text-[#4a4a5e]' : 'text-slate-900';
+  const activeNavClass = isTransparent ? 'text-[#42425a] font-semibold' : 'text-slate-900 font-bold';
   const navBg = isTransparent 
     ? 'py-5 sm:py-6 bg-transparent' 
     : 'py-3 sm:py-4 bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm transition-all duration-300';
     
   const buttonClass = isTransparent
-    ? 'bg-white text-slate-900 hover:bg-slate-100 shadow-[0_2px_15px_rgba(255,255,255,0.15)]'
-    : 'bg-[#B54D69] text-white hover:brightness-110 shadow-md shadow-slate-900/20';
+    ? 'bg-white/92 text-[#4a4a5e] hover:bg-white font-semibold shadow-[0_2px_14px_rgba(26,26,46,0.08)]'
+    : 'bg-ctaRose text-white hover:bg-ctaRoseHover shadow-md shadow-[rgba(224,154,173,0.24)]';
 
   // Build the dynamic nav links (like Match, Survey, Admin) 
   // We'll keep them understated if the user is just browsing the transparent hero.
@@ -104,7 +105,7 @@ function Navbar() {
   }
   const isRoseMenuActive = location.pathname.startsWith('/survey') || location.pathname.startsWith('/rose');
   const roseMenuButtonClass = `text-sm sm:text-[15px] transition-colors tracking-wide inline-flex items-center gap-1 ${
-    isRoseMenuActive ? (isTransparent ? 'text-white font-bold' : 'text-slate-900 font-bold') : textColor
+    isRoseMenuActive ? activeNavClass : textColor
   }`;
 
   return (
@@ -116,10 +117,21 @@ function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-5 sm:px-8">
         <div className="flex items-center justify-between">
-          {/* Logo Area matches the image: Envelope + Serif Font */}
+          {/* 品牌图标：public/brand-icon.png（换图后把 ?v= 数字 +1 可破缓存） */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className={`p-1.5 rounded shadow-sm ${isTransparent ? 'bg-white/10 text-white' : 'bg-slate-50 text-slate-800'}`}>
-              <Mail className="w-5 h-5 opacity-90" strokeWidth={1.5} />
+            <div
+              className={`p-1.5 rounded-lg shadow-sm flex items-center justify-center ${
+                isTransparent ? 'bg-white/90' : 'bg-slate-50'
+              }`}
+            >
+              <img
+                src="/brand-icon.png?v=10"
+                alt=""
+                width={24}
+                height={24}
+                draggable={false}
+                className="w-6 h-6 object-contain select-none"
+              />
             </div>
             <span className={`text-[1.35rem] sm:text-2xl font-serif font-medium tracking-[0.03em] ${logoColor}`}>
               {brandName}
@@ -139,7 +151,7 @@ function Navbar() {
                   key={link.path}
                   to={link.path}
                   className={`text-sm sm:text-[15px] transition-colors tracking-wide ${
-                    isActive ? (isTransparent ? 'text-white font-bold' : 'text-slate-900 font-bold') : textColor
+                    isActive ? activeNavClass : textColor
                   }`}
                 >
                   {link.label}
@@ -184,7 +196,7 @@ function Navbar() {
                   key={link.path}
                   to={link.path}
                   className={`text-sm sm:text-[15px] transition-colors tracking-wide ${
-                    isActive ? (isTransparent ? 'text-white font-bold' : 'text-slate-900 font-bold') : textColor
+                    isActive ? activeNavClass : textColor
                   }`}
                 >
                   {link.label}
@@ -195,14 +207,14 @@ function Navbar() {
             {token ? (
               <button
                 onClick={handleLogout}
-                className={`flex items-center gap-1.5 px-5 py-2 sm:py-2.5 rounded-full text-sm sm:text-[15px] font-bold transition-transform transform hover:-translate-y-0.5 ${buttonClass}`}
+                className={`flex items-center gap-1.5 px-5 py-2 sm:py-2.5 rounded-full text-sm sm:text-[15px] transition-transform transform hover:-translate-y-0.5 ${isTransparent ? '' : 'font-bold'} ${buttonClass}`}
               >
                 退出 <LogOut className="w-3.5 h-3.5 ml-1 inline-block" />
               </button>
             ) : (
               <Link
                 to="/auth"
-                className={`flex items-center gap-1.5 px-6 py-2 sm:px-7 sm:py-2.5 rounded-full text-sm sm:text-[15px] font-bold transition-transform transform hover:-translate-y-0.5 tracking-wide ${buttonClass}`}
+                className={`flex items-center gap-1.5 px-6 py-2 sm:px-7 sm:py-2.5 rounded-full text-sm sm:text-[15px] transition-transform transform hover:-translate-y-0.5 tracking-wide ${isTransparent ? '' : 'font-bold'} ${buttonClass}`}
               >
                 登录/注册
               </Link>

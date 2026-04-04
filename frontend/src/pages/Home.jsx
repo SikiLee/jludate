@@ -93,6 +93,12 @@ function Home() {
     : ['mails.jlu.edu.cn'];
   const domainText = allowedDomains.map((item) => `@${item}`).join(' / ');
   const homeHeroBackgroundUrl = siteConfig.home_hero_background_url;
+  /** 默认首屏杏花图：放到 frontend/public/hero-blossoms.png；后台「首页背景」可覆盖 */
+  const defaultHeroPhoto = '/hero-blossoms.png';
+  const heroPhotoSrc =
+    typeof homeHeroBackgroundUrl === 'string' && homeHeroBackgroundUrl.trim()
+      ? homeHeroBackgroundUrl.trim()
+      : defaultHeroPhoto;
   const isLoggedIn = Boolean(getAccessToken());
 
   const joinTarget = '/auth';
@@ -107,6 +113,22 @@ function Home() {
   const weekdayLabel = weekdayNames[scheduleDay] || '周二';
   const scheduleTimeLabel = `${String(scheduleHour).padStart(2, '0')}:${String(scheduleMinute).padStart(2, '0')}`;
   const scheduleRevealLabel = `${weekdayLabel} ${scheduleTimeLabel}`;
+
+  /** 页脚金色：香槟金偏灰，与 footerPink 更融；主标题略饱和，下两行更淡、阴影更轻 */
+  const footerGoldMainStyle = {
+    background: 'linear-gradient(168deg, #ebe3d6 0%, #c4a06a 40%, #8d7348 75%, #5a4633 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    filter: 'drop-shadow(0 0.5px 0 rgba(255,255,255,0.22)) drop-shadow(0 1px 2px rgba(45, 36, 24, 0.12))'
+  };
+  const footerGoldSoftStyle = {
+    background: 'linear-gradient(168deg, #ddd5cb 0%, #a8926a 52%, #6e5c44 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    filter: 'drop-shadow(0 0.5px 0 rgba(255,255,255,0.18))'
+  };
 
   // Countdown timer logic (configured weekly schedule)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -215,46 +237,57 @@ function Home() {
     ? siteConfig.faq_items
     : [
       {
-        q: '使用流程是什么？',
+        q: '我们是谁',
         a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周五晚八点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
       },
       {
-        q: '你们如何处理我的数据？',
-        a: '我们绝不泄露您的数据。您的问卷答案仅用于匹配，且在数据库中以随机 ID 存储，与您的邮箱地址分开保存。即使是维护团队，也无法直接将两者关联起来。详见隐私协议。'
+        q: '这是恋爱还是交友平台？',
+        a: '我们希望打造吉大人的社交匹配空间，目前上线的是恋爱板块，交友板块正在紧锣密鼓的研发中，敬请期待。'
       },
       {
-        q: '配吉友 的使用规范是什么？',
+        q: '使用流程是什么？',
+        a: '用吉大学生邮箱注册，花 10 分钟填写一份关于您的恋爱方式的问卷，然后每周五晚八点您将收到一封信封，附有您与TA的匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，我们将为您给对方发送您的邮箱。接下来的流程，由你们自己决定。'
+      },
+         
+      {
+        q: '使用规范是什么？',
         a: '彼此真诚，互相尊重。'
       },
       {
-        q: '配对算法是如何工作的？',
-        a: '我们的配对系统基于独创的 ROSE 亲密关系模型，深度融合行为心理学、核心价值观契合度以及人际边界理论。核心逻辑是“底线一致，特质互补”：在原则和三观上寻找同频，在性格与沟通方式上捕捉能产生化学反应的良性差异。'
+        q: '你们如何处理我的数据？',
+        a: '我们高度重视隐私保护，绝不泄露您的数据。您的问卷答案仅用于匹配，且在数据库中以随机 ID 存储，与您的邮箱地址分开保存。即使是维护团队，也无法直接将两者关联起来。'
+      },
+      {
+        q: '联系我们',
+        a: '您的每一条反馈对我们都很重要，如有问题反馈、功能建议，欢迎通过邮箱联系我们：JLUDate@163.com'
       }
+   
     ];
 
   const whyChooseItems = Array.isArray(siteConfig.why_choose_us_items) && siteConfig.why_choose_us_items.length > 0
     ? siteConfig.why_choose_us_items
     : [
       {
+        icon: 'heart',
+        title: '仅限吉大',
+        desc: '仅支持吉大学生邮箱注册。'
+      },
+      {
         icon: 'clock',
-        title: '每周一次',
-        desc: '没有"左滑右滑"。每周五晚八点统一揭晓，一周至多一次配对，让等待变得有意义。'
+        title: '一周一次',
+        desc: '一周仅一次配对，每周五晚八点统一揭晓，让等待变得有意义。'
       },
       {
         icon: 'target',
-        title: '精准匹配',
-        desc: '基于价值观、情感风格等深度研究与科学算法，不只看相似，也捕捉互补的差异。'
+        title: '算法匹配',
+        desc: '我们的配对算法基于独创的 ROSE 亲密关系模型，深度融合行为心理学、核心价值观契合度以及人际边界理论，核心逻辑是既相似也互补。与吉大校园更适配的2.0算法正在紧锣密鼓的研发中，敬请期待。'
       },
       {
         icon: 'shield',
-        title: '隐私优先',
-        desc: '{XXDate} 不是公开的社交平台。没有任何主页浏览，任何人除每周收到匹配外，只能看到与自己有关的信息。'
-      },
-      {
-        icon: 'heart',
-        title: '校园认证',
-        desc: '仅支持 {ALLOWED_DOMAINS} 邮箱注册。封闭纯粹的校园环境，让相认更加真实可靠。'
+        title: '隐私保护',
+        desc: 'JLUDate 配吉友不是公开的社交平台，没有任何主页浏览。'
       }
+      
     ];
 
   const iconMap = {
@@ -269,30 +302,53 @@ function Home() {
       {/* 全页背景层（较淡，置底） */}
       <SakuraPetalsOverlay baseCount={48} />
       
-      {/* 1. Hero Section */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-pagePink text-slate-900">
-        {/* 首屏局部花瓣（覆盖在内容前，但不影响交互）——加密 */}
-        <SakuraPetalsOverlay baseCount={56} containerClass="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
-        
-        {/* Feathered bottom fade into page background */}
-        <div className="absolute bottom-0 left-0 w-full h-48 md:h-[320px] bg-gradient-to-b from-transparent to-pagePink pointer-events-none"></div>
-        
+      {/* 1. Hero Section：粉底 + 摄影 + 粉系渐变罩，与 pagePink 融合（非整块硬贴图） */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden text-slate-900">
+        <div className="absolute inset-0 z-0 bg-pagePink" aria-hidden />
+        <div className="absolute inset-0 z-[1] overflow-hidden" aria-hidden>
+          <img
+            src={heroPhotoSrc}
+            alt=""
+            className="h-full w-full object-cover object-[72%_center] md:object-[center_right] min-h-full min-w-full scale-[1.03] opacity-[0.82]"
+            draggable={false}
+          />
+        </div>
+        <div
+          className="absolute inset-0 z-[2] pointer-events-none"
+          aria-hidden
+          style={{
+            background:
+              'linear-gradient(105deg, rgb(245, 234, 231) 0%, rgba(245, 234, 231, 0.92) 24%, rgba(245, 234, 231, 0.58) 44%, rgba(245, 234, 231, 0.22) 60%, transparent 76%)'
+          }}
+        />
+        <div className="absolute inset-0 z-[3] pointer-events-none h-[45%] bg-gradient-to-b from-pagePink/50 via-pagePink/10 to-transparent" aria-hidden />
+
+        <SakuraPetalsOverlay baseCount={56} containerClass="pointer-events-none absolute inset-0 z-[4] overflow-hidden" />
+
+        <div className="absolute bottom-0 left-0 z-[5] w-full h-48 md:h-[320px] bg-gradient-to-b from-transparent to-pagePink pointer-events-none" />
+
+        {/* 低饱和浅粉蒙版（约 15%），弱化摄影与花瓣细节，作氛围底 */}
+        <div
+          className="absolute inset-0 z-[6] pointer-events-none bg-[rgba(241,228,232,0.16)]"
+          aria-hidden
+        />
+
         <motion.div 
           initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.8 }}
           className="relative z-20 text-center max-w-4xl px-4 flex flex-col items-center"
         >
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight font-ysong">
+          <h1 className="text-5xl md:text-7xl font-medium font-ysong mb-6 text-[#1a1a2e] leading-[1.45] tracking-[0.06em] md:tracking-[0.08em]">
             杏花佳节<br />吉遇良缘
           </h1>
-          <div className="mb-4 font-ysong text-sm md:text-base" style={{ color: '#E8C5CF' }}>
+          <div className="mb-8 md:mb-10 font-shsans text-sm md:text-base font-light text-[#4a4a5e] tracking-wide">
             For mails.jlu.edu.cn
           </div>
-          <p className="text-lg md:text-xl mb-12 font-light max-w-2xl mx-auto leading-relaxed font-shsans" style={{ color: 'rgba(60,53,60,0.8)' }}>
-            只需填写一份深度问卷，每{scheduleRevealLabel}，<br />您将收到匹配结果，并附上我们认为你们会合拍的理由。
+          <p className="text-lg md:text-xl mb-12 font-extralight max-w-2xl mx-auto leading-relaxed font-shsans text-[#4a4a5e] tracking-wide">
+            填写深度问卷，每{scheduleRevealLabel}，您将收到匹配结果和合拍理由。
           </p>
           <button 
             onClick={() => navigate(joinTarget)}
-            className="px-8 py-4 bg-[#B54D69] text-white font-bold rounded-full hover:brightness-110 transition-all shadow-[0_8px_24px_rgba(181,77,105,0.35)] transform hover:-translate-y-0.5 text-lg"
+            className="px-8 py-4 bg-ctaRose text-white font-bold rounded-full hover:bg-ctaRoseHover transition-all shadow-[0_8px_24px_rgba(224,154,173,0.32)] transform hover:-translate-y-0.5 text-lg"
           >
             {joinLabel}
           </button>
@@ -344,7 +400,7 @@ function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', title: '填写深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法为您找到最契合的人。' },
-              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到您与对方的匹配度以及合拍理由，决定是否进一步联系，只有得到您的允许，我们才会将您的邮箱发送给对方' },
+              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到您与对方的匹配度以及合拍理由，决定是否进一步联系，只有得到您的允许，我们才会将您的邮箱发送给对方。' },
               { num: '03', title: '去见见TA吧!', desc: '真诚打招呼，慢慢了解彼此，把节奏交给你们自己。或许你们可以见面、散步、聊天，当然，一起约图也可以。' }
             ].map((step, idx) => (
               <motion.div key={idx} whileHover={{ y: -10 }} className="bg-cardIvory rounded-3xl p-8 shadow-sm border border-[#E8C5CF]/60 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
@@ -436,7 +492,7 @@ function Home() {
           <p className="text-xl text-slate-600 mb-10 font-light font-xihei">每{scheduleRevealLabel}，为你揭晓吉大校园里最契合的TA。</p>
           <button 
             onClick={() => navigate(joinTarget)}
-            className="px-10 py-5 rounded-full font-bold text-white bg-[#B54D69] hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_8px_24px_rgba(0,0,0,0.2)] text-lg font-xihei"
+            className="px-10 py-5 rounded-full font-bold text-white bg-ctaRose hover:bg-ctaRoseHover transition-all transform hover:scale-105 shadow-[0_8px_24px_rgba(224,154,173,0.32)] text-lg font-xihei"
           >
 
             {joinLabel}
@@ -444,12 +500,28 @@ function Home() {
         </div>
       </section>
 
-      <footer className="bg-[#582333] py-10 text-center text-sm text-gray-500">
+      <footer className="bg-footerPink py-10 text-center text-sm">
         <div className="mb-3">
-          <h3 className="font-ysong text-white/90 text-2xl md:text-3xl font-bold">JLU Date</h3>
-          <p className="mt-2 font-xihei" style={{ color: 'rgba(197,132,149,0.62)' }}>在吉大，遇见有缘的TA。</p>
+          <h3 className="font-ysong text-2xl md:text-3xl font-bold m-0">
+            <span className="inline-block" style={footerGoldMainStyle}>
+              JLU Date
+            </span>
+          </h3>
+          <p className="mt-2 font-xihei text-[15px]">
+            <span className="inline-block" style={footerGoldSoftStyle}>
+              在吉大，遇见有缘的TA。
+            </span>
+          </p>
         </div>
-        <p style={{ color: 'rgba(204,120,140,0.6)' }}>© {new Date().getFullYear()} JluDate Team.</p>
+        <div
+          className="mx-auto mb-3 h-px w-full max-w-md bg-[#6e5c44]/25"
+          aria-hidden
+        />
+        <p className="font-xihei text-[13px] tracking-wide">
+          <span className="inline-block" style={footerGoldSoftStyle}>
+            @2026 JLUDate
+          </span>
+        </p>
       </footer>
     </div>
   );

@@ -152,7 +152,7 @@ export function SiteConfigProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    document.title = '配吉友 | JluDate';
+    document.title = '配吉友 | JLU Date';
   }, [siteConfig.brand_name]);
 
   const value = useMemo(

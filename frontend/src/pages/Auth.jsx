@@ -224,7 +224,7 @@ function Auth() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder={`student@${primaryDomain}`}
             />
-            <p className="mt-2 text-xs text-slate-500">吉大学生邮箱域名：{domainHint}(此处登录需带后缀,账号和密码与校园网一致,若您注册时登录吉大学生邮箱网站显示用户不存在,系长时间不使用邮箱被学校停用，请在工作日上午8:00-11:30或下午13:30-16:00联系学校邮箱管理员0431-85166439报您的学号重新启用)</p>
+            <p className="mt-2 text-xs text-slate-500">吉大学生邮箱域名：{domainHint}(此处登录需带后缀，若您注册时登录吉大学生邮箱网站显示用户不存在,系长时间不使用邮箱被学校停用，请在工作日上午8:00-11:30或下午13:30-16:00联系学校邮箱管理员0431-85166439报您的学号重新启用)</p>
           </div>
 
           {!isLogin && (

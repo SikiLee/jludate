@@ -3,20 +3,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clearAuthStorage, getAccessToken, getIsAdmin } from '../lib/storage';
-import { useSiteConfig } from '../context/SiteConfigContext';
-
 function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { siteConfig } = useSiteConfig();
   const [scrolled, setScrolled] = useState(false);
   const [roseMenuOpen, setRoseMenuOpen] = useState(false);
   const roseMenuRef = useRef(null);
   const [, setAuthVersion] = useState(0);
   const token = getAccessToken();
   const isAdmin = getIsAdmin();
-  const brandName = siteConfig?.brand_name || '配吉友';
-
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -134,7 +129,7 @@ function Navbar() {
               />
             </div>
             <span className={`text-[1.35rem] sm:text-2xl font-serif font-medium tracking-[0.03em] ${logoColor}`}>
-              {brandName}
+              配吉友 | JLUDate
             </span>
           </Link>
 

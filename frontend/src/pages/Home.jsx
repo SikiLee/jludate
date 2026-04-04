@@ -344,7 +344,7 @@ function Home() {
             For mails.jlu.edu.cn
           </div>
           <p className="text-lg md:text-xl mb-12 font-extralight max-w-2xl mx-auto leading-relaxed font-shsans text-[#4a4a5e] tracking-wide">
-            填写深度问卷，每{scheduleRevealLabel}，您将收到匹配结果和合拍理由。
+            填写一份深度问卷，每周五 20:00，收到专属于您的匹配吉友和合拍理由。
           </p>
           <button 
             onClick={() => navigate(joinTarget)}
@@ -399,9 +399,9 @@ function Home() {
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">如何参与</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { num: '01', title: '填写深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法为您找到最契合的人。' },
-              { num: '02', title: `每${scheduleRevealLabel}，打开信封`, desc: '收到您与对方的匹配度以及合拍理由，决定是否进一步联系，只有得到您的允许，我们才会将您的邮箱发送给对方。' },
-              { num: '03', title: '去见见TA吧!', desc: '真诚打招呼，慢慢了解彼此，把节奏交给你们自己。或许你们可以见面、散步、聊天，当然，一起约图也可以。' }
+              { num: '01', title: '填写一份深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法在七万茫茫吉大人海里，为你匹配那个频率同频的人。' },
+              { num: '02', title: `每${scheduleRevealLabel}，拆开您的专属来信`, desc: '信封里藏着您与对方的匹配契合度，还有我们偷偷为你们写下的「合拍理由」。只有得到您的允许，我们才会将您的邮箱发送给对方。' },
+              { num: '03', title: '赴一场属于吉大的约', desc: '故事由你们续写，在南区的清湖旁坐坐，南岭的杏花树下散步，新民的操场吹晚风，朝阳的图书馆自习，南湖的湖边散步，和平的草地上看云，从干饭搭子开始，把吉大的每一寸风景都走一遍。' }
             ].map((step, idx) => (
               <motion.div key={idx} whileHover={{ y: -10 }} className="bg-cardIvory rounded-3xl p-8 shadow-sm border border-[#E8C5CF]/60 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                 <div className="text-7xl font-black text-gray-50/80 absolute -top-4 -right-2 transition-transform group-hover:scale-110">{step.num}</div>

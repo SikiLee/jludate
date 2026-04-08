@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Survey from './pages/Survey';
+import SurveyEntry from './pages/SurveyEntry';
 import RoseTypes from './pages/RoseTypes';
 import Match from './pages/Match';
 import Admin from './pages/Admin';
@@ -41,7 +42,8 @@ function AppLayout() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/survey" element={<Survey />} />
+          <Route path="/survey" element={<SurveyEntry />} />
+          <Route path="/survey/questionnaire" element={<Survey />} />
           <Route path="/rose" element={<RoseTypes />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/match" element={

@@ -338,7 +338,12 @@ export function validateProfile(profile) {
     return { ok: false, msg: 'Invalid gender' };
   }
 
-  if (!isValidTargetGender(profile.target_gender)) {
+  if (
+    profile.target_gender !== undefined
+    && profile.target_gender !== null
+    && profile.target_gender !== ''
+    && !isValidTargetGender(profile.target_gender)
+  ) {
     return { ok: false, msg: 'Invalid target gender' };
   }
 

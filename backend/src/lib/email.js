@@ -163,7 +163,7 @@ export async function sendPasswordResetEmail(toEmail, code) {
 
 export async function sendMatchEmail({
   toEmail,
-  partnerEmail,
+  partnerNickname,
   matchPercent,
   selfRose,
   partnerRose,
@@ -182,10 +182,15 @@ export async function sendMatchEmail({
     '查看入口：{{match_url}}',
     '派发时间：{{run_at}} ({{timezone}})'
   ].join('\n');
+  const partnerDisplay =
+    typeof partnerNickname === 'string' && partnerNickname.trim()
+      ? partnerNickname.trim()
+      : '对方未设置昵称';
   const templateVariables = {
     brand_name: brandName,
     match_url: resolveMatchResultUrl(),
-    partner_email: partnerEmail,
+    partner_nickname: partnerDisplay,
+    partner_email: partnerDisplay,
     match_percent: matchPercent,
     self_rose: selfRose,
     partner_rose: partnerRose,

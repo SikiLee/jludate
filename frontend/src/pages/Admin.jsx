@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutTemplate, Settings2, Globe, MessageSquareText } from 'lucide-react';
 import AdminRoseTypes from './AdminRoseTypes';
 import AdminSurveyQuestions from './AdminSurveyQuestions';
+import AdminMatchQuestionnaire from './AdminMatchQuestionnaire';
 import AdminSiteSettings from './AdminSiteSettings';
 import AdminFeedback from './AdminFeedback';
 
@@ -69,6 +70,23 @@ function Admin() {
           </button>
 
           <button
+            onClick={() => setActiveTab('match_questionnaire')}
+            className={`relative px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 z-10 ${
+              activeTab === 'match_questionnaire' ? 'text-rose-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
+            }`}
+          >
+            {activeTab === 'match_questionnaire' && (
+              <motion.div
+                layoutId="admin-tab-bg"
+                className="absolute inset-0 bg-rose-50/90 rounded-xl"
+                initial={false}
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <span className="relative z-10">匹配问卷配置中心</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('feedback')}
             className={`relative px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 z-10 ${
               activeTab === 'feedback' ? 'text-amber-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
@@ -121,6 +139,17 @@ function Admin() {
               transition={{ duration: 0.2 }}
             >
               <AdminSurveyQuestions />
+            </motion.div>
+          )}
+          {activeTab === 'match_questionnaire' && (
+            <motion.div
+              key="match_questionnaire"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AdminMatchQuestionnaire />
             </motion.div>
           )}
           {activeTab === 'feedback' && (

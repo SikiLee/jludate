@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSiteConfig } from '../context/SiteConfigContext';
-import { setAccessToken, setIsAdmin } from '../lib/storage';
+import { getAccessToken, setAccessToken, setIsAdmin } from '../lib/storage';
+import { CAMPUS_OPTIONS } from '../constants/campuses';
+import { COLLEGE_OPTIONS } from '../constants/colleges';
+import { GRADE_OPTIONS } from '../constants/grades';
+
+const BIOLOGY_GENDER_OPTIONS = [
+  { value: 'male', label: '男' },
+  { value: 'female', label: '女' }
+];
 
 const DOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
 
@@ -104,6 +112,10 @@ function Auth() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [regGender, setRegGender] = useState('');
+  const [regGrade, setRegGrade] = useState('');
+  const [regCampus, setRegCampus] = useState('');
+  const [regCollege, setRegCollege] = useState('');
   const navigate = useNavigate();
   const { siteConfig } = useSiteConfig();
 
@@ -117,6 +129,12 @@ function Auth() {
 
   const primaryDomain = resolvePrimaryDomain(allowedDomainRules);
   const domainHint = allowedDomainRules.map((item) => `@${item}`).join('、');
+
+  useEffect(() => {
+    if (getAccessToken()) {
+      navigate('/survey', { replace: true });
+    }
+  }, [navigate]);
 
   const isAllowedEmail = (rawEmail) => {
     return isEmailMatchedByRules(rawEmail, allowedDomainRules);
@@ -158,11 +176,19 @@ function Auth() {
         await api.post('/auth/register', {
           email: email.trim().toLowerCase(),
           password,
-          code
+          code,
+          gender: regGender,
+          grade: regGrade,
+          campus: regCampus,
+          college: regCollege
         });
         toast.success('注册成功，请登录');
         setAuthMode('login');
         setCode('');
+        setRegGender('');
+        setRegGrade('');
+        setRegCampus('');
+        setRegCollege('');
       } else {
         await api.post('/auth/forgot-password/reset', {
           email: email.trim().toLowerCase(),
@@ -263,6 +289,68 @@ function Auth() {
               placeholder="至少6位"
             />
           </div>
+
+          {isRegister ? (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">性别</label>
+                <select
+                  required
+                  value={regGender}
+                  onChange={(e) => setRegGender(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                >
+                  <option value="" disabled>请选择生物学性别</option>
+                  {BIOLOGY_GENDER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">年级</label>
+                <select
+                  required
+                  value={regGrade}
+                  onChange={(e) => setRegGrade(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                >
+                  <option value="" disabled>请选择年级</option>
+                  {GRADE_OPTIONS.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs text-slate-500">注：医学院大五和大四合并</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">校区</label>
+                <select
+                  required
+                  value={regCampus}
+                  onChange={(e) => setRegCampus(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                >
+                  <option value="" disabled>请选择校区</option>
+                  {CAMPUS_OPTIONS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">学院</label>
+                <select
+                  required
+                  value={regCollege}
+                  onChange={(e) => setRegCollege(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                >
+                  <option value="" disabled>请选择学院</option>
+                  {COLLEGE_OPTIONS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : null}
 
           <button
             type="submit"

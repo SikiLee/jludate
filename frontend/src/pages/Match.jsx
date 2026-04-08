@@ -33,7 +33,14 @@ function Match() {
     history: [],
     self_rose: null,
     self_rose_name: null,
-    type_interpretation: null
+    type_interpretation: null,
+    partner_nickname: '',
+    partner_gender_label: '',
+    partner_campus: '',
+    partner_college: '',
+    partner_grade: '',
+    partner_message_to_partner: '',
+    partner_contact_for_match: ''
   });
   const [chatData, setChatData] = useState({
     match_result_id: null,
@@ -163,7 +170,14 @@ function Match() {
         history: [],
         self_rose: null,
         self_rose_name: null,
-        type_interpretation: null
+        type_interpretation: null,
+        partner_nickname: '',
+        partner_gender_label: '',
+        partner_campus: '',
+        partner_college: '',
+        partner_grade: '',
+        partner_message_to_partner: '',
+        partner_contact_for_match: ''
       });
       setChatData({ match_result_id: null, messages: [] });
     } finally {
@@ -282,7 +296,11 @@ function Match() {
               <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 text-left space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-szured font-bold mb-1">Match</p>
-                  <p className="text-xl font-black text-slate-900">{matchData.partner_email}</p>
+                  <p className="text-xl font-black text-slate-900">
+                    {typeof matchData.partner_nickname === 'string' && matchData.partner_nickname.trim()
+                      ? matchData.partner_nickname.trim()
+                      : '对方未设置昵称'}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -304,6 +322,44 @@ function Match() {
                   <div className="bg-white border border-slate-200 rounded-xl p-3">
                     <p className="text-slate-500">对方ROSE</p>
                     <p className="font-black text-slate-900 text-lg">{matchData.partner_rose}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  <h3 className="text-base font-black text-slate-900">对方信息</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                      <p className="text-slate-500 mb-1">性别</p>
+                      <p className="font-semibold text-slate-800">{matchData.partner_gender_label || '—'}</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                      <p className="text-slate-500 mb-1">校区</p>
+                      <p className="font-semibold text-slate-800">{matchData.partner_campus || '—'}</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                      <p className="text-slate-500 mb-1">学院</p>
+                      <p className="font-semibold text-slate-800 text-xs leading-5">{matchData.partner_college || '—'}</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                      <p className="text-slate-500 mb-1">年级</p>
+                      <p className="font-semibold text-slate-800">{matchData.partner_grade || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 text-left">
+                    <p className="text-sm font-black text-slate-900 mb-2">对对方想说的话</p>
+                    <p className="text-sm text-slate-700 leading-7 whitespace-pre-wrap">
+                      {typeof matchData.partner_message_to_partner === 'string' && matchData.partner_message_to_partner.trim()
+                        ? matchData.partner_message_to_partner.trim()
+                        : '对方未填写'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 text-left">
+                    <p className="text-sm font-black text-slate-900 mb-2">对方联系方式</p>
+                    <p className="text-sm text-slate-700 leading-7 whitespace-pre-wrap">
+                      {typeof matchData.partner_contact_for_match === 'string' && matchData.partner_contact_for_match.trim()
+                        ? matchData.partner_contact_for_match.trim()
+                        : '对方未公开联系方式'}
+                    </p>
                   </div>
                 </div>
 
@@ -427,7 +483,11 @@ function Match() {
                       className="rounded-xl border border-slate-200 bg-slate-50 p-4"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-bold text-slate-900">{item.partner_email || '--'}</p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {(typeof item.partner_nickname === 'string' && item.partner_nickname.trim())
+                            ? item.partner_nickname.trim()
+                            : '对方未设置昵称'}
+                        </p>
                         <p className="text-sm font-black text-szured">{Number.isFinite(item.match_percent) ? `${item.match_percent}%` : '--'}</p>
                       </div>
                       <p className="text-xs text-slate-500 mt-1">{formatRunTime(item.run_at)}</p>

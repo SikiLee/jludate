@@ -1,13 +1,26 @@
 import { ensureSchema, identityPool, surveyPool } from 'lib/db';
 import { ensureServerBootstrap } from 'lib/bootstrap';
 import { getCurrentUserFromRequest } from 'lib/auth';
-import { getRespondentIdByUserId, getUserEmailByRespondentId } from 'lib/identityLink';
+import {
+  getRespondentIdByUserId,
+  getUserMatchDisplayProfileByRespondentId
+} from 'lib/identityLink';
 import { buildMatchDimensionReasons } from 'lib/rose';
 import { getPublicTypeInterpretation } from 'lib/typeInterpretation';
 import { httpError, success } from 'lib/response';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+function genderToLabel(value) {
+  if (value === 'male') {
+    return '男';
+  }
+  if (value === 'female') {
+    return '女';
+  }
+  return '—';
+}
 
 export async function GET(request) {
   try {
@@ -89,19 +102,29 @@ export async function GET(request) {
       const selfRose = row.respondent1_id === respondentId ? row.user1_rose_code : row.user2_rose_code;
       const partnerRose = row.respondent1_id === respondentId ? row.user2_rose_code : row.user1_rose_code;
 
-      const partnerEmail = await getUserEmailByRespondentId(identityPool, partnerRespondentId, {
-        actor: `user:${currentUserId}`,
-        purpose: 'match_get_partner_email'
-      });
+      const partnerProfile = await getUserMatchDisplayProfileByRespondentId(
+        identityPool,
+        partnerRespondentId,
+        {
+          actor: `user:${currentUserId}`,
+          purpose: 'match_get_partner_display_profile'
+        }
+      );
 
-      if (!partnerEmail) {
+      if (!partnerProfile) {
         continue;
       }
 
       history.push({
         match_result_id: row.id,
         run_id: row.run_id,
-        partner_email: partnerEmail,
+        partner_nickname: partnerProfile.nickname || '',
+        partner_gender_label: genderToLabel(partnerProfile.gender),
+        partner_campus: partnerProfile.campus || '—',
+        partner_college: partnerProfile.college || '—',
+        partner_grade: partnerProfile.grade || '—',
+        partner_message_to_partner: partnerProfile.message_to_partner || '',
+        partner_contact_for_match: partnerProfile.partner_contact_for_match || '',
         match_percent: Number(row.final_match_percent),
         self_rose: selfRose,
         partner_rose: partnerRose,
@@ -137,7 +160,13 @@ export async function GET(request) {
       match_result_id: latestMatch.match_result_id,
       match_reasons: dimensionReasons,
       history,
-      partner_email: latestMatch.partner_email,
+      partner_nickname: latestMatch.partner_nickname || '',
+      partner_gender_label: latestMatch.partner_gender_label || '—',
+      partner_campus: latestMatch.partner_campus || '—',
+      partner_college: latestMatch.partner_college || '—',
+      partner_grade: latestMatch.partner_grade || '—',
+      partner_message_to_partner: latestMatch.partner_message_to_partner || '',
+      partner_contact_for_match: latestMatch.partner_contact_for_match || '',
       match_percent: latestMatch.match_percent,
       self_rose: effectiveSelfRose,
       self_rose_name: selfRoseName,

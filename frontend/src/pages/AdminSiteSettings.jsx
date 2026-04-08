@@ -600,10 +600,10 @@ function AdminSiteSettings() {
               }}
               className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
             />
-            开启外校匹配（用户可在问卷中选择是否接受外校对象）
+            开启跨校区匹配（用户可在问卷中选择是否接受跨校区对象）
           </label>
           <p className="mt-2 text-xs text-slate-500">
-            关闭时：所有用户仅在本校范围匹配。开启时：仅选择“允许外校匹配”的用户会参与跨校配对。
+            关闭时：同一邮箱域名内<strong>仅同校区</strong>可配对（校区在注册/问卷基础信息中选择）。开启时：同域名下不同校区需双方均勾选「允许跨校区匹配」；<strong>不同邮箱域名</strong>仍仅在开启且双方同意时配对。
           </p>
         </section>
 
@@ -641,7 +641,7 @@ function AdminSiteSettings() {
         <ConfigSection title="邮件模板设置" defaultOpen={false}>
           <section className="space-y-4">
             <p className="text-sm text-slate-600">
-              支持参数：<code>{'{{brand_name}}'}</code>、<code>{'{{code}}'}</code>、<code>{'{{match_url}}'}</code>、<code>{'{{partner_email}}'}</code>、<code>{'{{match_percent}}'}</code>、<code>{'{{self_rose}}'}</code>、<code>{'{{partner_rose}}'}</code>、<code>{'{{run_at}}'}</code>、<code>{'{{timezone}}'}</code>
+              支持参数：<code>{'{{brand_name}}'}</code>、<code>{'{{code}}'}</code>、<code>{'{{match_url}}'}</code>、<code>{'{{partner_nickname}}'}</code>（<code>{'{{partner_email}}'}</code> 与之相同，均为对方昵称展示）、<code>{'{{match_percent}}'}</code>、<code>{'{{self_rose}}'}</code>、<code>{'{{partner_rose}}'}</code>、<code>{'{{run_at}}'}</code>、<code>{'{{timezone}}'}</code>
             </p>
 
             <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">

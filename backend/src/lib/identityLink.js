@@ -343,6 +343,72 @@ export async function getUserEmailByRespondentId(db, respondentIdInput, { actor 
   return email;
 }
 
+/** 匹配页展示对方资料（不含邮箱）；需校验 respondent 哈希防越权 */
+export async function getUserMatchDisplayProfileByRespondentId(
+  db,
+  respondentIdInput,
+  { actor = 'system', purpose = '' } = {}
+) {
+  const respondentId = normalizeRespondentId(respondentIdInput);
+  if (!respondentId) {
+    return null;
+  }
+
+  const respondentHash = hashRespondentIdForLookup(respondentId);
+  const result = await db.query(
+    `
+    SELECT
+      l.respondent_id_ciphertext,
+      l.respondent_id_key_version,
+      u.nickname,
+      u.gender,
+      u.campus,
+      u.college,
+      u.grade,
+      u.message_to_partner,
+      u.share_contact_with_match,
+      u.match_contact_detail
+    FROM unidate_app.user_respondent_links l
+    INNER JOIN unidate_app.users u ON u.id = l.user_id
+    WHERE l.respondent_id_hash = $1
+    LIMIT 1
+    `,
+    [respondentHash]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  const decryptedRespondentId = decryptRespondentIdFromRow(row);
+  if (!decryptedRespondentId || decryptedRespondentId !== respondentId) {
+    return null;
+  }
+
+  await writeIdentityAuditLog(db, {
+    actor,
+    action: 'read_match_display_profile_by_respondent',
+    targetType: 'respondent',
+    targetRef: respondentHash.slice(0, 16),
+    purpose
+  });
+
+  const shareContact = Boolean(row.share_contact_with_match);
+  const rawDetail = typeof row.match_contact_detail === 'string' ? row.match_contact_detail.trim() : '';
+  const partnerContactForMatch = shareContact && rawDetail ? rawDetail : '';
+
+  return {
+    nickname: typeof row.nickname === 'string' ? row.nickname.trim() : '',
+    gender: typeof row.gender === 'string' ? row.gender.trim() : '',
+    campus: typeof row.campus === 'string' ? row.campus.trim() : '',
+    college: typeof row.college === 'string' ? row.college.trim() : '',
+    grade: typeof row.grade === 'string' ? row.grade.trim() : '',
+    message_to_partner: typeof row.message_to_partner === 'string' ? row.message_to_partner : '',
+    partner_contact_for_match: partnerContactForMatch
+  };
+}
+
 export async function listActiveIdentityProfilesForMatching(db, { actor = 'system', purpose = '' } = {}) {
   const result = await db.query(
     `
@@ -354,6 +420,8 @@ export async function listActiveIdentityProfilesForMatching(db, { actor = 'syste
       u.gender,
       u.target_gender,
       u.allow_cross_school_match,
+      u.campus,
+      u.nickname,
       u.orientation,
       l.respondent_id_ciphertext,
       l.respondent_id_key_version
@@ -379,6 +447,8 @@ export async function listActiveIdentityProfilesForMatching(db, { actor = 'syste
       gender: row.gender,
       target_gender: row.target_gender,
       allow_cross_school_match: Boolean(row.allow_cross_school_match),
+      campus: typeof row.campus === 'string' ? row.campus.trim() : '',
+      nickname: typeof row.nickname === 'string' ? row.nickname.trim() : '',
       orientation: row.orientation
     });
   }

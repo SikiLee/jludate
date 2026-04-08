@@ -6,9 +6,13 @@ import {
   findUserByEmail,
   updateEncryptedEmailForUser
 } from 'lib/identityLink';
+import { normalizeCollege } from 'lib/college';
+import { normalizeCampus } from 'lib/campus';
+import { normalizeGradeInput } from 'lib/profileFields';
 import { bizError, httpError, success } from 'lib/response';
 import { isAllowedSchoolEmail, readJson } from 'lib/request';
 import { getAllowedEmailDomains } from 'lib/siteConfig';
+import { isValidGender } from 'lib/rose';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,16 +49,43 @@ export async function POST(request) {
       return bizError(400, 'Invalid verification code');
     }
 
+    const regGender = body?.gender;
+    if (!isValidGender(regGender)) {
+      return bizError(400, '请选择生物学性别');
+    }
+    const gradeResult = normalizeGradeInput(body?.grade);
+    if (!gradeResult.ok) {
+      return bizError(400, gradeResult.msg);
+    }
+    const campusRaw = typeof body?.campus === 'string' ? body.campus : '';
+    const regCampus = normalizeCampus(campusRaw);
+    if (!regCampus) {
+      return bizError(400, '请选择校区');
+    }
+    const collegeRaw = typeof body?.college === 'string' ? body.college : '';
+    const regCollege = normalizeCollege(collegeRaw);
+    if (!regCollege) {
+      if (collegeRaw.trim() !== '') {
+        return bizError(400, '学院选择无效');
+      }
+      return bizError(400, '请选择学院');
+    }
+
     const hashedPassword = await hashPassword(password);
     await identityPool.query(
       `
       UPDATE unidate_app.users
       SET hashed_password = $1,
           is_active = TRUE,
-          verification_code = NULL
+          verification_code = NULL,
+          gender = $3,
+          grade = $4,
+          campus = $5,
+          college = $6,
+          registration_profile_locked = TRUE
       WHERE id = $2
       `,
-      [hashedPassword, user.id]
+      [hashedPassword, user.id, regGender, gradeResult.value, regCampus, regCollege]
     );
 
     await updateEncryptedEmailForUser(identityPool, user.id, email);

@@ -4,73 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Clock, ShieldCheck, Target, ChevronDown } from 'lucide-react';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { getAccessToken } from '../lib/storage';
-
-const SakuraPetalsOverlay = React.memo(function SakuraPetalsOverlay({ baseCount = 36, containerClass = 'pointer-events-none fixed inset-0 z-0 overflow-hidden' }) {
-  const isReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const initialCount = useMemo(() => {
-    const viewportIsSmall = typeof window !== 'undefined' && window.innerWidth < 640;
-    return isReduced ? 0 : (viewportIsSmall ? Math.floor(baseCount * 0.5) : baseCount);
-  }, []); // 仅在挂载时计算一次，避免随父组件重渲染而重建
-
-  const petals = useMemo(() => Array.from({ length: initialCount }).map((_, index) => {
-    // 分段均匀分布：把 0-100 划分为 initialCount 份，每份内做微小抖动，避免扎堆
-    const segment = 100 / Math.max(1, initialCount);
-    const segmentStart = index * segment;
-    const jitter = (Math.random() * 0.8 + 0.1) * segment; // 10%-90% 的段内抖动
-    const left = Math.min(99.5, segmentStart + jitter);
-    const size = 10 + Math.random() * 18; // 10-28px
-    // 加快速度：缩短每片花瓣的下落持续时间
-    const duration = 6 + Math.random() * 9; // 6-15s
-    // 让挂载后立刻“飘满全屏”：用负延迟覆盖完整 duration，让每片在不同阶段出现
-    const delay = Math.random() * duration;
-    const opacity = 0.3 + Math.random() * 0.4; // 0.3-0.7（减少重绘）
-    const rotate = Math.random() * 360;
-    const sway = Math.random() < 0.5 ? -1 : 1;
-    return (
-      <svg
-        key={`petal-${index}`}
-        viewBox="0 0 32 32"
-        style={{
-          left: `${left}%`,
-          width: `${size}px`,
-          height: `${size * 1.2}px`,
-          animationDuration: `${duration}s`,
-          animationDelay: `${-delay}s`,
-          opacity,
-          transform: `rotate(${rotate}deg)`,
-          ['--sway-dir']: sway,
-          willChange: 'transform'
-        }}
-        className="absolute -top-10 animate-[sakura-fall_linear_infinite] text-roseTint/80 select-none"
-      >
-        <path
-          d="M16 2 C12 6, 10 10, 10 14 C10 18, 13 22, 16 30 C19 22, 22 18, 22 14 C22 10, 20 6, 16 2 Z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }), []); // 花瓣元素只生成一次
-
-  return isReduced ? null : (
-    <>
-      <style>{`
-        @keyframes sakura-fall {
-          0%   { transform: translate3d(0, -10vh, 0) rotate(0deg) }
-          25%  { transform: translate3d(calc(var(--sway-dir, 1) * -10px), 25vh, 0) rotate(90deg) }
-          50%  { transform: translate3d(calc(var(--sway-dir, 1) *  10px), 50vh, 0) rotate(180deg) }
-          75%  { transform: translate3d(calc(var(--sway-dir, 1) * -10px), 75vh, 0) rotate(270deg) }
-          100% { transform: translate3d(calc(var(--sway-dir, 1) *  10px), 110vh, 0) rotate(360deg) }
-        }
-      `}</style>
-      <div className={containerClass}>
-        {petals}
-      </div>
-    </>
-  );
-});
+import SakuraPetalsOverlay from '../components/SakuraPetalsOverlay';
 
 function Home() {
   const navigate = useNavigate();
@@ -100,9 +34,8 @@ function Home() {
       ? homeHeroBackgroundUrl.trim()
       : defaultHeroPhoto;
   const isLoggedIn = Boolean(getAccessToken());
-
-  const joinTarget = '/auth';
-  const joinLabel = '立即加入';
+  const joinTarget = isLoggedIn ? '/survey' : '/auth';
+  const joinLabel = isLoggedIn ? '进入问卷' : '立即加入';
   const matchSchedule = siteConfig.match_schedule && typeof siteConfig.match_schedule === 'object'
     ? siteConfig.match_schedule
     : { day_of_week: 5, hour: 20, minute: 0 };

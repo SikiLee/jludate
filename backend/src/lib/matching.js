@@ -5,6 +5,7 @@ import {
   computeRoseProfile
 } from 'lib/rose';
 import { sendMatchEmail } from 'lib/email';
+import { isValidCampus } from 'lib/campus';
 import { getCrossSchoolMatchingEnabled } from 'lib/siteConfig';
 
 function getShanghaiWallDate(date = new Date()) {
@@ -73,12 +74,21 @@ function toCandidate(identityProfile, answers) {
     return null;
   }
 
+  const campus = typeof identityProfile.campus === 'string' ? identityProfile.campus.trim() : '';
+  if (!isValidCampus(campus)) {
+    return null;
+  }
+
+  const nickname = typeof identityProfile.nickname === 'string' ? identityProfile.nickname.trim() : '';
+
   return {
     id: identityProfile.user_id,
     respondent_id: identityProfile.respondent_id,
     email: identityProfile.email,
+    nickname,
     gender: identityProfile.gender,
     target_gender: identityProfile.target_gender,
+    campus,
     allow_cross_school_match: Boolean(identityProfile.allow_cross_school_match),
     orientation: identityProfile.orientation,
     school_domain: extractSchoolDomainKey(identityProfile.email),
@@ -93,12 +103,21 @@ function toCandidate(identityProfile, answers) {
 }
 
 function isSchoolPairAllowed(left, right, { crossSchoolEnabled }) {
-  const isSameSchool = Boolean(
+  const sameDomain = Boolean(
     left.school_domain
     && right.school_domain
     && left.school_domain === right.school_domain
   );
-  if (isSameSchool) {
+
+  if (!sameDomain) {
+    if (!crossSchoolEnabled) {
+      return false;
+    }
+    return Boolean(left.allow_cross_school_match) && Boolean(right.allow_cross_school_match);
+  }
+
+  const sameCampus = Boolean(left.campus && right.campus && left.campus === right.campus);
+  if (sameCampus) {
     return true;
   }
 
@@ -336,9 +355,12 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
     await client.query('COMMIT');
 
     for (const emailTask of pendingEmails) {
+      const rightNick = (emailTask.right.nickname || '').trim() || '对方未设置昵称';
+      const leftNick = (emailTask.left.nickname || '').trim() || '对方未设置昵称';
+
       await sendMatchEmail({
         toEmail: emailTask.left.email,
-        partnerEmail: emailTask.right.email,
+        partnerNickname: rightNick,
         matchPercent: emailTask.finalMatchPercent,
         selfRose: emailTask.left.rose.rose_code,
         partnerRose: emailTask.right.rose.rose_code,
@@ -347,7 +369,7 @@ export async function runMatchingEngine({ runType = 'manual', runKey: customRunK
 
       await sendMatchEmail({
         toEmail: emailTask.right.email,
-        partnerEmail: emailTask.left.email,
+        partnerNickname: leftNick,
         matchPercent: emailTask.finalMatchPercent,
         selfRose: emailTask.right.rose.rose_code,
         partnerRose: emailTask.left.rose.rose_code,

@@ -197,7 +197,7 @@ test('end-to-end API flow with ROSE survey and match trigger', async () => {
     body: JSON.stringify({
       email: userAEmail,
       password,
-      code: codeA
+      code: codeA,
     })
   });
   assert.equal(registerA.status, 200);
@@ -271,14 +271,30 @@ test('end-to-end API flow with ROSE survey and match trigger', async () => {
   const saveProfileA = await request('/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${tokenA}` },
-    body: JSON.stringify({ gender: 'male', target_gender: 'female' })
+    body: JSON.stringify({
+      nickname: '用户甲',
+      gender: 'male',
+      target_gender: 'female',
+      campus: '南区',
+      college: '数学',
+      grade: '大三',
+      message_to_partner: '你好呀'
+    })
   });
   assert.equal(saveProfileA.status, 200);
 
   const saveProfileB = await request('/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${tokenB}` },
-    body: JSON.stringify({ gender: 'female', target_gender: 'male' })
+    body: JSON.stringify({
+      nickname: '用户乙',
+      gender: 'female',
+      target_gender: 'male',
+      campus: '南区',
+      college: '文学',
+      grade: '研一',
+      message_to_partner: ''
+    })
   });
   assert.equal(saveProfileB.status, 200);
 
@@ -375,7 +391,8 @@ test('end-to-end API flow with ROSE survey and match trigger', async () => {
   assert.equal(myMatchA.status, 200);
   assert.equal(myMatchA.payload?.code, 200);
   assert.equal(myMatchA.payload?.data?.matched, true);
-  assert.ok(myMatchA.payload?.data?.partner_email);
+  assert.equal(Object.prototype.hasOwnProperty.call(myMatchA.payload?.data || {}, 'partner_email'), false);
+  assert.ok(typeof myMatchA.payload?.data?.partner_nickname === 'string');
   assert.equal(typeof myMatchA.payload?.data?.match_percent, 'number');
   assert.ok(myMatchA.payload?.data?.self_rose);
   assert.ok(myMatchA.payload?.data?.partner_rose);

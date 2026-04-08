@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { seedInterpretationsIfEmpty } from 'lib/typeInterpretation';
 import { seedSurveyQuestionsIfEmpty } from 'lib/surveyQuestionConfig';
+import { seedMatchQuestionnaireConfigIfEmpty } from 'lib/matchQuestionnaireConfig';
 import { seedDefaultSiteSettings } from 'lib/siteConfig';
 import { buildEncryptedEmailPayload, normalizeEmail } from 'lib/identityLink';
 import { hashPassword } from 'lib/password';
@@ -296,12 +297,62 @@ async function ensureIdentitySchema() {
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS gender VARCHAR(16)');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS target_gender VARCHAR(16)');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS allow_cross_school_match BOOLEAN NOT NULL DEFAULT FALSE');
+  await identityAdminPool.query(
+    "ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS campus VARCHAR(32) NOT NULL DEFAULT '南区'"
+  );
+  await identityAdminPool.query(
+    "ALTER TABLE unidate_app.users ALTER COLUMN campus SET DEFAULT '南区'"
+  );
+  await identityAdminPool.query(
+    "ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS college VARCHAR(128) NOT NULL DEFAULT ''"
+  );
+  await identityAdminPool.query(
+    "ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS nickname VARCHAR(64) NOT NULL DEFAULT ''"
+  );
+  await identityAdminPool.query(
+    "ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS grade VARCHAR(16) NOT NULL DEFAULT ''"
+  );
+  await identityAdminPool.query(
+    "ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS message_to_partner VARCHAR(900) NOT NULL DEFAULT ''"
+  );
+  await identityAdminPool.query(
+    'ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS share_contact_with_match BOOLEAN NOT NULL DEFAULT FALSE'
+  );
+  await identityAdminPool.query(
+    "ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS match_contact_detail VARCHAR(64) NOT NULL DEFAULT ''"
+  );
+  await identityAdminPool.query(
+    "UPDATE unidate_app.users SET grade = '博一' WHERE TRIM(COALESCE(grade, '')) = '博士'"
+  );
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS orientation VARCHAR(32)');
+  await identityAdminPool.query(
+    "UPDATE unidate_app.users SET campus = '南区' WHERE TRIM(COALESCE(campus, '')) = ''"
+  );
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
   await identityAdminPool.query('UPDATE unidate_app.users SET allow_cross_school_match = FALSE WHERE allow_cross_school_match IS NULL');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ALTER COLUMN allow_cross_school_match SET DEFAULT FALSE');
   await identityAdminPool.query('ALTER TABLE unidate_app.users ALTER COLUMN allow_cross_school_match SET NOT NULL');
+
+  await identityAdminPool.query(
+    'ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS registration_profile_locked BOOLEAN NOT NULL DEFAULT FALSE'
+  );
+  await identityAdminPool.query(
+    'ALTER TABLE unidate_app.users ADD COLUMN IF NOT EXISTS auto_weekly_match BOOLEAN NOT NULL DEFAULT TRUE'
+  );
+  await identityAdminPool.query(
+    `
+    UPDATE unidate_app.users
+    SET registration_profile_locked = TRUE
+    WHERE registration_profile_locked = FALSE
+      AND gender IS NOT NULL AND BTRIM(COALESCE(gender, '')) <> ''
+      AND grade IS NOT NULL AND BTRIM(COALESCE(grade, '')) <> ''
+      AND campus IS NOT NULL AND BTRIM(COALESCE(campus, '')) <> ''
+    `
+  );
+  await identityAdminPool.query(
+    'UPDATE unidate_app.users SET auto_weekly_match = TRUE WHERE auto_weekly_match IS NULL'
+  );
 
   await identityAdminPool.query('ALTER TABLE unidate_app.users ALTER COLUMN email DROP NOT NULL');
   await identityAdminPool.query(
@@ -405,6 +456,53 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.match_questionnaire_modules (
+      id SERIAL PRIMARY KEY,
+      questionnaire_type VARCHAR(16) NOT NULL,
+      module_index SMALLINT NOT NULL,
+      title TEXT NOT NULL,
+      display_order INTEGER NOT NULL,
+      updated_by INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(questionnaire_type, module_index)
+    )
+  `);
+
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.match_questionnaire_items (
+      id SERIAL PRIMARY KEY,
+      questionnaire_type VARCHAR(16) NOT NULL,
+      page_key VARCHAR(16) NOT NULL,
+      module_index SMALLINT NOT NULL DEFAULT 0,
+      question_kind VARCHAR(32) NOT NULL,
+      display_order INTEGER NOT NULL,
+      question_number INTEGER NOT NULL,
+      question_title TEXT NOT NULL DEFAULT '',
+      question_stem TEXT NOT NULL DEFAULT '',
+      left_option_text TEXT NOT NULL DEFAULT '',
+      right_option_text TEXT NOT NULL DEFAULT '',
+      options_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_by INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(questionnaire_type, page_key, module_index, question_number)
+    )
+  `);
+
+  // Backfill for older rows (if any).
+  await surveyAdminPool.query(`
+    UPDATE unidate_app.match_questionnaire_items
+    SET module_index = 0
+    WHERE module_index IS NULL
+  `);
+
+  await surveyAdminPool.query(`
+    CREATE INDEX IF NOT EXISTS idx_match_questionnaire_items_type_page_module_order
+    ON unidate_app.match_questionnaire_items(questionnaire_type, page_key, module_index, display_order, question_number)
+  `);
+
+  await surveyAdminPool.query(`
     CREATE TABLE IF NOT EXISTS unidate_app.rose_type_interpretations (
       id SERIAL PRIMARY KEY,
       rose_code VARCHAR(8) UNIQUE NOT NULL,
@@ -453,6 +551,36 @@ async function ensureSurveySchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.love_questionnaire_drafts (
+      respondent_id VARCHAR(64) PRIMARY KEY,
+      category VARCHAR(16) NOT NULL DEFAULT 'love',
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      current_step SMALLINT NOT NULL DEFAULT 0,
+      completed BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.match_questionnaire_drafts (
+      respondent_id VARCHAR(64) NOT NULL,
+      category VARCHAR(16) NOT NULL,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      current_step SMALLINT NOT NULL DEFAULT 0,
+      completed BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (respondent_id, category)
+    )
+  `);
+  await surveyAdminPool.query(
+    'CREATE INDEX IF NOT EXISTS idx_love_questionnaire_drafts_updated ON unidate_app.love_questionnaire_drafts(updated_at DESC)'
+  );
+
+  await surveyAdminPool.query(
+    'CREATE INDEX IF NOT EXISTS idx_match_questionnaire_drafts_updated ON unidate_app.match_questionnaire_drafts(updated_at DESC)'
+  );
 
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_responses ADD COLUMN IF NOT EXISTS respondent_id VARCHAR(64)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_responses ADD COLUMN IF NOT EXISTS rose_code VARCHAR(8)');
@@ -543,6 +671,7 @@ async function ensureSurveySchema() {
 async function seedSurveyData() {
   await seedInterpretationsIfEmpty(surveyAdminPool);
   await seedSurveyQuestionsIfEmpty(surveyAdminPool);
+  await seedMatchQuestionnaireConfigIfEmpty(surveyAdminPool);
   await seedDefaultSiteSettings(surveyAdminPool);
 }
 

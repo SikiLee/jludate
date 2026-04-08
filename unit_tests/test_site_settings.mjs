@@ -40,7 +40,7 @@ test('validateSiteSettingsPayload requires valid brand and domain list', () => {
       },
       match_result: {
         subject: '【{{brand_name}}】匹配结果',
-        body: '对方：{{partner_email}}，匹配度：{{match_percent}}%'
+        body: '对方：{{partner_nickname}}，匹配度：{{match_percent}}%'
       }
     },
     cross_school_matching_enabled: true,
@@ -58,7 +58,7 @@ test('validateSiteSettingsPayload requires valid brand and domain list', () => {
   assert.deepEqual(ok.data.why_choose_us_items, [{ icon: 'clock', title: '每周一次', desc: '每周揭晓一次' }]);
   assert.deepEqual(ok.data.faq_items, [{ q: '问题1', a: '答案1' }]);
   assert.equal(ok.data.email_templates.verification.subject, '【{{brand_name}}】验证码');
-  assert.equal(ok.data.email_templates.match_result.body, '对方：{{partner_email}}，匹配度：{{match_percent}}%');
+  assert.equal(ok.data.email_templates.match_result.body, '对方：{{partner_nickname}}，匹配度：{{match_percent}}%');
 
   const badBrand = validateSiteSettingsPayload({
     brand_name: '',

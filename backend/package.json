@@ -9,7 +9,7 @@
     "start": "next start -H 0.0.0.0 -p 8000"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.2",
     "next": "^14.2.5",
     "nodemailer": "^6.9.14",

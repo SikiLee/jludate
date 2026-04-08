@@ -13,6 +13,8 @@ import { bizError, httpError, success } from 'lib/response';
 import { isAllowedSchoolEmail, readJson } from 'lib/request';
 import { getAllowedEmailDomains } from 'lib/siteConfig';
 import { isValidGender } from 'lib/rose';
+import { rateLimit } from 'lib/rateLimit';
+import { logError } from 'lib/securityLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +26,10 @@ export async function POST(request) {
 
     const body = await readJson(request);
     const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const rl = rateLimit(request, 'auth_register', { email, limit: 10, windowMs: 10 * 60_000 });
+    if (!rl.allowed) {
+      return bizError(429, 'Too many requests. Please try again later');
+    }
     const password = body?.password;
     const code = body?.code;
     const allowedDomains = await getAllowedEmailDomains(surveyPool);
@@ -96,7 +102,7 @@ export async function POST(request) {
 
     return success('Registration successful');
   } catch (error) {
-    console.error('POST /api/auth/register failed:', error);
+    logError('POST /api/auth/register failed', error);
     return httpError(500, 'Internal Server Error');
   }
 }

@@ -5,6 +5,8 @@ import { findUserByEmail, updateEncryptedEmailForUser } from 'lib/identityLink';
 import { bizError, httpError, success } from 'lib/response';
 import { isAllowedSchoolEmail, readJson } from 'lib/request';
 import { getAllowedEmailDomains } from 'lib/siteConfig';
+import { rateLimit } from 'lib/rateLimit';
+import { logError } from 'lib/securityLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +26,10 @@ export async function POST(request) {
 
     const body = await readJson(request);
     const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const rl = rateLimit(request, 'auth_forgot_send_code', { email, limit: 5, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return success('If the account exists, reset code has been sent');
+    }
     const allowedDomains = await getAllowedEmailDomains(surveyPool);
 
     if (!isAllowedSchoolEmail(email, allowedDomains)) {
@@ -51,7 +57,7 @@ export async function POST(request) {
     }
     return success('Password reset code sent');
   } catch (error) {
-    console.error('POST /api/auth/forgot-password/send-code failed:', error);
+    logError('POST /api/auth/forgot-password/send-code failed', error);
     return httpError(500, 'Internal Server Error');
   }
 }

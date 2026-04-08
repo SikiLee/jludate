@@ -690,7 +690,7 @@ function RoseSurveyLegacy() {
               onClick={() => navigate(isLoggedIn ? '/match' : '/auth')}
               className="px-8 py-4 sm:px-10 sm:py-5 bg-slate-900 hover:bg-black hover:-translate-y-1 active:scale-95 text-white rounded-2xl font-black text-base sm:text-lg transition-all duration-300 shadow-xl shadow-slate-900/20 flex items-center justify-center gap-2"
             >
-              {isLoggedIn ? '开启心动匹配之旅' : '登录后开启匹配'}
+              {isLoggedIn ? '查看匹配结果' : '登录后开启匹配'}
               <span className="text-2xl leading-none">→</span>
             </button>
             <button

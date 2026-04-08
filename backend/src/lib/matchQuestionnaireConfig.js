@@ -141,8 +141,8 @@ function getDefaultHardSettingsItems() {
       page_key: 'hard',
       question_number: 2,
       question_kind: 'select',
-      question_title: '最多可接受对方比我年长（岁）',
-      question_stem: '0 表示仅接受同龄或更年长',
+      question_title: '最多可接受对方比我大几级',
+      question_stem: '',
       left_option_text: '',
       right_option_text: '',
       options_json: {
@@ -155,8 +155,8 @@ function getDefaultHardSettingsItems() {
       page_key: 'hard',
       question_number: 3,
       question_kind: 'select',
-      question_title: '最多可接受对方比我年纪更小（岁）',
-      question_stem: '0 表示仅接受同龄或更年轻',
+      question_title: '最多可接受对方比我小几级',
+      question_stem: '',
       left_option_text: '',
       right_option_text: '',
       options_json: {
@@ -211,6 +211,33 @@ function getDefaultHardSettingsItems() {
     {
       page_key: 'settings',
       question_number: 3,
+      question_kind: 'toggle',
+      question_title: '是否有对对方想说的话',
+      question_stem: '',
+      left_option_text: NO,
+      right_option_text: YES,
+      options_json: {
+        payload_key: 'include_message_to_partner',
+        left_value: false,
+        right_value: true
+      }
+    },
+    {
+      page_key: 'settings',
+      question_number: 4,
+      question_kind: 'textarea',
+      question_title: '对对方想说的话（必填，1～200字）',
+      question_stem: '',
+      left_option_text: '',
+      right_option_text: '',
+      options_json: {
+        payload_key: 'message_to_partner',
+        placeholder: '请输入对对方想说的话'
+      }
+    },
+    {
+      page_key: 'settings',
+      question_number: 5,
       question_kind: 'toggle',
       question_title: '是否自动参与每周匹配',
       question_stem: '',

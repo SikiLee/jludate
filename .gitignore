@@ -18,6 +18,7 @@ frontend/.env.*
 *.log
 .tmp/
 .pytest_cache/
+tmp_*.json
 
 # ide/os
 .idea/

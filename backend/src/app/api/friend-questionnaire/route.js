@@ -141,10 +141,22 @@ export async function POST(request) {
       if (!contactResult.ok) {
         return bizError(400, contactResult.msg);
       }
+      const includeMessage = Boolean(merged.match_settings.include_message_to_partner);
+      const rawMessage = typeof merged.match_settings.message_to_partner === 'string'
+        ? merged.match_settings.message_to_partner.trim()
+        : '';
+      if (includeMessage) {
+        const len = [...rawMessage].length;
+        if (len < 1 || len > 200) {
+          return bizError(400, '选择“有对对方想说的话”时，请填写想说的话（1～200字）');
+        }
+      }
       if (!matchSettingsComplete({
         ...merged.match_settings,
         share_contact_with_match: contactResult.share,
-        match_contact_detail: contactResult.detail
+        match_contact_detail: contactResult.detail,
+        include_message_to_partner: includeMessage,
+        message_to_partner: includeMessage ? rawMessage : ''
       })) {
         return bizError(400, '请完善匹配设置');
       }
@@ -159,13 +171,15 @@ export async function POST(request) {
         SET target_gender = $1,
             share_contact_with_match = $2,
             match_contact_detail = $3,
-            auto_weekly_match = $4
-        WHERE id = $5
+            message_to_partner = $4,
+            auto_weekly_match = $5
+        WHERE id = $6
         `,
         [
           tg,
           contactResult.share,
           contactResult.detail,
+          includeMessage ? rawMessage : '',
           Boolean(merged.match_settings.auto_participate_weekly_match),
           authResult.user.id
         ]
@@ -173,6 +187,8 @@ export async function POST(request) {
 
       merged.match_settings.share_contact_with_match = contactResult.share;
       merged.match_settings.match_contact_detail = contactResult.detail;
+      merged.match_settings.include_message_to_partner = includeMessage;
+      merged.match_settings.message_to_partner = includeMessage ? rawMessage : '';
     }
 
     const nextStep = currentStep !== null

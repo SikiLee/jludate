@@ -27,6 +27,11 @@ export function normalizeLoveQuestionnairePayload(raw) {
     acceptSmoking = null;
   }
 
+  let acceptCrossCampus = hard.accept_cross_campus;
+  if (acceptCrossCampus !== true && acceptCrossCampus !== false) {
+    acceptCrossCampus = null;
+  }
+
   const share =
     settings.share_contact_with_match === true
     || settings.share_contact_with_match === 'true';
@@ -39,6 +44,7 @@ export function normalizeLoveQuestionnairePayload(raw) {
   return {
     hard_filter: {
       target_gender: normalizedTarget,
+      accept_cross_campus: acceptCrossCampus,
       age_diff_older_max: ageOlder,
       age_diff_younger_max: ageYounger,
       accept_smoking: acceptSmoking
@@ -62,6 +68,9 @@ export function hardFilterStepComplete(hard) {
   if (hard.accept_smoking !== true && hard.accept_smoking !== false) {
     return false;
   }
+  if (hard.accept_cross_campus !== true && hard.accept_cross_campus !== false) {
+    return false;
+  }
   if (!Number.isInteger(hard.age_diff_older_max) || hard.age_diff_older_max < 0 || hard.age_diff_older_max > 3) {
     return false;
   }
@@ -80,6 +89,14 @@ export function matchSettingsComplete(settings) {
   if (share) {
     const len = [...detail].length;
     if (len < 1 || len > 20) {
+      return false;
+    }
+  }
+  const includeMessage = Boolean(settings.include_message_to_partner);
+  const rawMessage = typeof settings.message_to_partner === 'string' ? settings.message_to_partner.trim() : '';
+  if (includeMessage) {
+    const len = [...rawMessage].length;
+    if (len < 1 || len > 200) {
       return false;
     }
   }

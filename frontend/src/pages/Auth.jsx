@@ -298,7 +298,9 @@ function Auth() {
                   required
                   value={regGender}
                   onChange={(e) => setRegGender(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                  className={`w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition ${
+                    regGender ? 'text-slate-900' : 'text-slate-400'
+                  }`}
                 >
                   <option value="" disabled>请选择生物学性别</option>
                   {BIOLOGY_GENDER_OPTIONS.map((o) => (
@@ -312,7 +314,9 @@ function Auth() {
                   required
                   value={regGrade}
                   onChange={(e) => setRegGrade(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                  className={`w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition ${
+                    regGrade ? 'text-slate-900' : 'text-slate-400'
+                  }`}
                 >
                   <option value="" disabled>请选择年级</option>
                   {GRADE_OPTIONS.map((g) => (
@@ -327,7 +331,9 @@ function Auth() {
                   required
                   value={regCampus}
                   onChange={(e) => setRegCampus(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                  className={`w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition ${
+                    regCampus ? 'text-slate-900' : 'text-slate-400'
+                  }`}
                 >
                   <option value="" disabled>请选择校区</option>
                   {CAMPUS_OPTIONS.map((c) => (
@@ -341,7 +347,9 @@ function Auth() {
                   required
                   value={regCollege}
                   onChange={(e) => setRegCollege(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition"
+                  className={`w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-szured/10 focus:border-szured outline-none transition ${
+                    regCollege ? 'text-slate-900' : 'text-slate-400'
+                  }`}
                 >
                   <option value="" disabled>请选择学院</option>
                   {COLLEGE_OPTIONS.map((c) => (

@@ -9,6 +9,8 @@ import {
 import { bizError, httpError, success } from 'lib/response';
 import { isAllowedSchoolEmail, readJson } from 'lib/request';
 import { getAllowedEmailDomains } from 'lib/siteConfig';
+import { rateLimit } from 'lib/rateLimit';
+import { logError } from 'lib/securityLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +30,10 @@ export async function POST(request) {
 
     const body = await readJson(request);
     const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const rl = rateLimit(request, 'auth_send_code', { email, limit: 5, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return bizError(429, `Too many requests. Please try again in ${rl.retryAfterSec}s`);
+    }
     const allowedDomains = await getAllowedEmailDomains(surveyPool);
 
     if (!isAllowedSchoolEmail(email, allowedDomains)) {
@@ -62,7 +68,7 @@ export async function POST(request) {
     }
     return success('Verification code sent successfully');
   } catch (error) {
-    console.error('POST /api/auth/send-code failed:', error);
+    logError('POST /api/auth/send-code failed', error);
     return httpError(500, 'Internal Server Error');
   }
 }

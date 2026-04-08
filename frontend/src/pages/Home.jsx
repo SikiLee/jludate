@@ -277,14 +277,25 @@ function Home() {
             For mails.jlu.edu.cn
           </div>
           <p className="text-lg md:text-xl mb-12 font-extralight max-w-2xl mx-auto leading-relaxed font-shsans text-[#4a4a5e] tracking-wide">
-            填写一份深度问卷，每周五 20:00，收到专属于您的匹配吉友和合拍理由。
+            填写一份深度问卷，每周五 20:00，<br />
+            收到专属于您的匹配吉友和合拍理由。
           </p>
-          <button 
-            onClick={() => navigate(joinTarget)}
-            className="px-8 py-4 bg-ctaRose text-white font-bold rounded-full hover:bg-ctaRoseHover transition-all shadow-[0_8px_24px_rgba(224,154,173,0.32)] transform hover:-translate-y-0.5 text-lg"
-          >
-            {joinLabel}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button 
+              onClick={() => navigate(joinTarget)}
+              className="px-8 py-4 bg-ctaRose text-white font-bold rounded-full hover:bg-ctaRoseHover transition-all shadow-[0_8px_24px_rgba(224,154,173,0.32)] transform hover:-translate-y-0.5 text-lg"
+            >
+              {joinLabel}
+            </button>
+            {isLoggedIn ? (
+              <button
+                onClick={() => navigate('/match')}
+                className="px-8 py-4 bg-white/90 text-szured font-bold rounded-full hover:bg-white transition-all shadow-[0_8px_24px_rgba(26,26,46,0.08)] transform hover:-translate-y-0.5 text-lg border border-roseTint/60"
+              >
+                匹配结果
+              </button>
+            ) : null}
+          </div>
         
         </motion.div>
       </section>
@@ -332,8 +343,8 @@ function Home() {
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-900 font-ysong">如何参与</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { num: '01', title: '填写一份深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法在七万茫茫吉大人海里，为你匹配那个频率同频的人。' },
-              { num: '02', title: `每${scheduleRevealLabel}，拆开您的专属来信`, desc: '信封里藏着您与对方的匹配契合度，还有我们偷偷为你们写下的「合拍理由」。只有得到您的允许，我们才会将您的邮箱发送给对方。' },
+              { num: '01', title: '填写一份深度问卷', desc: '让我们充分了解您的价值观、情感风格、生活方式，让算法在七万吉大人海里，为你匹配那个频率同频的人。' },
+              { num: '02', title: `每${scheduleRevealLabel}，拆开您的来信`, desc: '信封里藏着您与对方的匹配契合度，还有我们偷偷为你们写下的「合拍理由」。只有得到您的允许，我们才会将您的联系方式发送给对方。' },
               { num: '03', title: '赴一场属于吉大的约', desc: '故事由你们续写，在南区的清湖旁坐坐，南岭的杏花树下散步，新民的操场吹晚风，朝阳的图书馆自习，南湖的湖边散步，和平的草地上看云，从干饭搭子开始，把吉大的每一寸风景都走一遍。' }
             ].map((step, idx) => (
               <motion.div key={idx} whileHover={{ y: -10 }} className="bg-cardIvory rounded-3xl p-8 shadow-sm border border-[#E8C5CF]/60 relative overflow-hidden group hover:shadow-xl transition-all duration-300">

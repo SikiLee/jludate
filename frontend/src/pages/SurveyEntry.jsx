@@ -29,19 +29,10 @@ function SurveyEntry() {
         >
           <div className="bg-cardIvory rounded-3xl border border-roseTint/60 shadow-sm hover:shadow-lg transition-shadow p-8 sm:p-10">
             <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a2e] text-center mb-2 font-ysong tracking-wide">
-              请选择匹配入口
+              欢迎回来
             </h2>
-            <p className="text-center text-sm font-shsans font-light text-[#4a4a5e] mb-10 tracking-wide">
-              与首页同一视觉语言 · 择一路而往
-            </p>
+            <div className="h-6" />
             <div className="flex flex-col items-center gap-4">
-              <button
-                type="button"
-                className={ENTRY_BUTTON_CLASS}
-                onClick={() => navigate('/survey/questionnaire?type=friend')}
-              >
-                进入交友匹配
-              </button>
               <button
                 type="button"
                 className={ENTRY_BUTTON_CLASS}
@@ -52,9 +43,9 @@ function SurveyEntry() {
               <button
                 type="button"
                 className={ENTRY_BUTTON_CLASS}
-                onClick={() => navigate('/survey/questionnaire?type=buddy')}
+                onClick={() => navigate('/survey/questionnaire?type=friend')}
               >
-                进入搭子匹配
+                进入交友匹配
               </button>
             </div>
           </div>

@@ -93,7 +93,8 @@ function Navbar() {
   const commonLinks = [];
   const authLinks = [];
   if (token) {
-    authLinks.push({ path: '/match', label: '心动匹配' });
+    authLinks.push({ path: '/survey', label: '修改问卷' });
+    authLinks.push({ path: '/match', label: '匹配结果' });
     if (isAdmin) {
       authLinks.push({ path: '/admin', label: '后台' });
     }

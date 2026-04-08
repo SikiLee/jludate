@@ -2,30 +2,26 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: identity_db
-    ports:
-      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d identity_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d identity_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
     environment:
       - IDENTITY_DATABASE_URL=postgresql://identity_app:identity_password@db:5432/identity_db
       - SURVEY_DATABASE_URL=postgresql://survey_app:survey_password@db:5432/survey_db
       - DATABASE_URL=postgresql://survey_app:survey_password@db:5432/survey_db
-      - DATABASE_ADMIN_URL=postgresql://user:password@db:5432/postgres
-      - SMTP_ENABLED=${SMTP_ENABLED:-true}
+      - DATABASE_ADMIN_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@db:5432/postgres
+      - SMTP_ENABLED=${SMTP_ENABLED:-false}
       - SMTP_HOST=${SMTP_HOST:-smtp.example.com}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_SECURE=${SMTP_SECURE:-false}
@@ -63,8 +59,6 @@ services:
 
   frontend:
     build: ./frontend
-    ports:
-      - "8383:80"
     depends_on:
       backend:
         condition: service_healthy

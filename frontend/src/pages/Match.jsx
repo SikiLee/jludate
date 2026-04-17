@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Loader2, RefreshCw, Send, X } from 'lucide-react';
 import SakuraPetalsOverlay from '../components/SakuraPetalsOverlay';
 import api from '../api';
-import { fireAndForgetTrack } from '../lib/track';
 
 const MATCH_CATEGORY_OPTIONS = [
   { key: 'love', label: '恋爱匹配' },
@@ -52,13 +51,6 @@ function Match() {
   const [openModuleKeys, setOpenModuleKeys] = useState({});
   const chatPollRef = useRef(null);
   const matchResultId = data?.match?.match_result_id || null;
-
-  useEffect(() => {
-    fireAndForgetTrack({
-      event_key: 'match_page_open',
-      payload: { category }
-    });
-  }, [category]);
 
   useEffect(() => {
     let cancelled = false;

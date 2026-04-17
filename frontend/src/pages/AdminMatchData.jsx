@@ -36,6 +36,18 @@ function CategoryBreakdown({ title, data }) {
   );
 }
 
+function FunnelCard({ title, colorClass, funnel }) {
+  const f = funnel || {};
+  return (
+    <div className={`rounded-xl border px-3 py-2 text-sm ${colorClass}`}>
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1">候选两侧：{Number(f.left_participants || 0)} / {Number(f.right_participants || 0)}</p>
+      <p>硬筛通过边：{Number(f.hard_filter_edges || 0)}</p>
+      <p>阈值通过边：{Number(f.threshold_edges || 0)}</p>
+    </div>
+  );
+}
+
 function AdminMatchData() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -187,6 +199,28 @@ function AdminMatchData() {
                 填写 {Number(previewResult?.xinghua?.questionnaire_filled || 0)} / 成功 {Number(previewResult?.xinghua?.matched_users || 0)}
               </p>
             </div>
+          </div>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+            <FunnelCard
+              title="恋爱漏斗诊断"
+              colorClass="border-rose-200 bg-rose-50 text-rose-700"
+              funnel={previewResult?.love?.funnel}
+            />
+            <FunnelCard
+              title="交友漏斗诊断"
+              colorClass="border-sky-200 bg-sky-50 text-sky-700"
+              funnel={previewResult?.friend?.funnel}
+            />
+            <FunnelCard
+              title="杏花漏斗诊断"
+              colorClass="border-violet-200 bg-violet-50 text-violet-700"
+              funnel={previewResult?.xinghua?.funnel}
+            />
+          </div>
+          <div className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+            总漏斗：候选两侧 {Number(previewResult?.total?.funnel?.left_participants || 0)} / {Number(previewResult?.total?.funnel?.right_participants || 0)}，
+            硬筛通过边 {Number(previewResult?.total?.funnel?.hard_filter_edges || 0)}，
+            阈值通过边 {Number(previewResult?.total?.funnel?.threshold_edges || 0)}
           </div>
         </div>
       ) : null}

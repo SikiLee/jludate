@@ -4,21 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Clock, ShieldCheck, Target, ChevronDown } from 'lucide-react';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { getAccessToken } from '../lib/storage';
-import { fireAndForgetTrack } from '../lib/track';
 import SakuraPetalsOverlay from '../components/SakuraPetalsOverlay';
-
-function getVisitorKey() {
-  const storageKey = 'jludate_visitor_key';
-  try {
-    const existing = localStorage.getItem(storageKey);
-    if (existing && existing.trim()) return existing.trim();
-    const generated = `v-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(storageKey, generated);
-    return generated;
-  } catch {
-    return '';
-  }
-}
 
 function Home() {
   const navigate = useNavigate();
@@ -153,15 +139,6 @@ function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    const visitorKey = getVisitorKey();
-    fireAndForgetTrack({
-      event_key: 'site_click',
-      visitor_key: visitorKey,
-      payload: { page: 'home' }
-    });
   }, []);
 
   const numberFormatter = new Intl.NumberFormat('zh-CN');

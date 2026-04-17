@@ -36,6 +36,11 @@ export function normalizeLoveQuestionnairePayload(raw) {
     settings.share_contact_with_match === true
     || settings.share_contact_with_match === 'true';
   const rawContact = typeof settings.match_contact_detail === 'string' ? settings.match_contact_detail.trim() : '';
+  const rawNickname = typeof settings.nickname === 'string' ? settings.nickname.trim() : '';
+  const includeMessage =
+    settings.include_message_to_partner === true
+    || settings.include_message_to_partner === 'true';
+  const rawMessage = typeof settings.message_to_partner === 'string' ? settings.message_to_partner.trim() : '';
   let autoWeekly = settings.auto_participate_weekly_match;
   if (autoWeekly !== true && autoWeekly !== false) {
     autoWeekly = true;
@@ -51,8 +56,11 @@ export function normalizeLoveQuestionnairePayload(raw) {
     },
     deep_survey: deep,
     match_settings: {
+      nickname: rawNickname,
       share_contact_with_match: share,
       match_contact_detail: share ? rawContact : '',
+      include_message_to_partner: includeMessage,
+      message_to_partner: includeMessage ? rawMessage : '',
       auto_participate_weekly_match: autoWeekly
     }
   };

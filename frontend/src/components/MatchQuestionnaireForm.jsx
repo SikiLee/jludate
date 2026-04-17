@@ -72,6 +72,7 @@ function emptyPayload() {
     },
     deep_survey: {},
     match_settings: {
+      nickname: '',
       share_contact_with_match: false,
       match_contact_detail: '',
       include_message_to_partner: false,
@@ -326,6 +327,8 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
 
   const settingsOk = useMemo(() => {
     const m = payload.match_settings || {};
+    const nicknameLen = [...String(m.nickname || '').trim()].length;
+    if (nicknameLen > 20) return false;
     if (!m.share_contact_with_match) return true;
     const len = (m.match_contact_detail || '').trim().length;
     return len >= 1 && len <= 20;
@@ -385,10 +388,25 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
         placeholder: '\u8bf7\u8f93\u5165\u5bf9\u5bf9\u65b9\u60f3\u8bf4\u7684\u8bdd'
       }
     };
+    const nicknameInput = byKey.get('nickname') || {
+      id: 'injected-nickname',
+      page_key: 'settings',
+      question_number: 1,
+      question_kind: 'text',
+      question_title: '你的昵称名是？',
+      question_stem: '可不填，最多20字',
+      left_option_text: '',
+      right_option_text: '',
+      options_json: {
+        payload_key: 'nickname',
+        placeholder: '可选填写昵称'
+      }
+    };
 
     // Enforce UX order so child inputs appear under the right toggles:
-    // share_contact -> match_contact_detail -> include_message -> message_to_partner -> auto_weekly
+    // nickname -> share_contact -> match_contact_detail -> include_message -> message_to_partner -> auto_weekly
     const orderedKeys = [
+      'nickname',
       'share_contact_with_match',
       'match_contact_detail',
       'include_message_to_partner',
@@ -398,6 +416,10 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
 
     const ordered = [];
     for (const key of orderedKeys) {
+      if (key === 'nickname') {
+        ordered.push(nicknameInput);
+        continue;
+      }
       if (key === 'include_message_to_partner') {
         ordered.push(includeToggle);
         continue;
@@ -639,11 +661,14 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
     );
   };
 
-  const renderSettingsQuestion = (item) => {
+  const isSettingsChildQuestion = (key) => key === 'match_contact_detail' || key === 'message_to_partner';
+
+  const renderSettingsQuestion = (item, displayNumber) => {
     const key = item.options_json?.payload_key;
     const kind = item.question_kind;
     const stem = item.question_stem || '';
     const title = resolveQuestionTitle(item);
+    const titleWithNumber = isSettingsChildQuestion(key) ? title : `${displayNumber}. ${title}`;
     if (kind === 'toggle') {
       const leftText = item.left_option_text || TXT.no;
       const rightText = item.right_option_text || TXT.yes;
@@ -656,7 +681,7 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
       const rightOn = current === rightValue;
       return (
         <div key={`settings-${item.id}`} className="space-y-3">
-          <p className="text-sm font-bold text-[#1a1a2e] mb-1 font-shsans">{item.question_number}. {title}</p>
+          <p className="text-sm font-bold text-[#1a1a2e] mb-1 font-shsans">{titleWithNumber}</p>
           {stem ? <p className="text-sm text-[#4a4a5e] font-shsans">{stem}</p> : null}
           <div className="flex gap-3">
             <button
@@ -693,7 +718,7 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
           className={`space-y-2 ${key === 'match_contact_detail' ? 'ml-3 pl-3 border-l-2 border-roseTint/25' : ''}`}
         >
           <p className="text-sm font-bold text-[#1a1a2e] font-shsans">
-            {key === 'match_contact_detail' ? title : `${item.question_number}. ${title}`}
+            {titleWithNumber}
           </p>
           {stem ? <p className="text-sm text-[#4a4a5e] font-shsans">{stem}</p> : null}
           <input
@@ -705,6 +730,9 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
             placeholder={item.options_json?.placeholder || TXT.choose}
           />
           {key === 'match_contact_detail' && payload.match_settings?.share_contact_with_match ? (
+            <p className="text-xs text-[#4a4a5e]/80 font-shsans">已输入 {String((value || '').length)}/20</p>
+          ) : null}
+          {key === 'nickname' ? (
             <p className="text-xs text-[#4a4a5e]/80 font-shsans">已输入 {String((value || '').length)}/20</p>
           ) : null}
         </div>
@@ -1065,7 +1093,16 @@ export default function MatchQuestionnaireForm({ questionnaireType }) {
           <section className="bg-cardIvory rounded-3xl border border-roseTint/60 shadow-sm hover:shadow-md transition-shadow p-7 sm:p-10">
             <h2 className="text-2xl font-bold text-[#1a1a2e] mb-8 font-ysong tracking-wide">{TXT.settings}</h2>
             <div className="space-y-8 max-w-xl mx-auto">
-              {effectiveSettingsItems.map((it) => renderSettingsQuestion(it))}
+              {(() => {
+                let topLevelIndex = 0;
+                return effectiveSettingsItems.map((it) => {
+                  const key = it?.options_json?.payload_key;
+                  if (!isSettingsChildQuestion(key)) {
+                    topLevelIndex += 1;
+                  }
+                  return renderSettingsQuestion(it, topLevelIndex);
+                });
+              })()}
             </div>
             <div className="mt-12 flex justify-center">
               <button

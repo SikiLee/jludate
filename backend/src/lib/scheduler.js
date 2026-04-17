@@ -1,5 +1,5 @@
 import { ensureSchema, surveyPool } from 'lib/db';
-import { runMatchResultBroadcast, getCurrentScheduledBroadcastRunKey } from 'lib/matchBroadcast';
+import { runWeeklyMatchingPipeline } from 'lib/weeklyMatch';
 import { getMatchScheduleSettings, isMatchScheduleDueInShanghai } from 'lib/siteConfig';
 
 let schedulerStarted = false;
@@ -18,12 +18,9 @@ async function runScheduledBroadcast() {
   }
   running = true;
   try {
-    await runMatchResultBroadcast({
-      runKey: getCurrentScheduledBroadcastRunKey(),
-      initiatedBy: 'scheduler'
-    });
+    await runWeeklyMatchingPipeline({ initiatedBy: 'scheduler' });
   } catch (error) {
-    console.error('Scheduled broadcast failed:', error);
+    console.error('Scheduled weekly match failed:', error);
   } finally {
     running = false;
   }

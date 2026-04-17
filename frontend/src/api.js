@@ -23,6 +23,11 @@ api.interceptors.response.use(
     return response;
   },
   error => {
+    // Ignore canceled requests (AbortController / route switch / StrictMode double invoke).
+    if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError') {
+      return Promise.reject(error);
+    }
+
     const status = error.response?.status;
     const skipAuthRedirect = Boolean(error.config?.skipAuthRedirect);
     const responseData = error.response?.data;

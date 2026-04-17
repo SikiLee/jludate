@@ -3,7 +3,7 @@ import { ensureServerBootstrap } from 'lib/bootstrap';
 import { getCurrentUserFromRequest } from 'lib/auth';
 import { getRespondentIdByUserId, ensureRespondentIdForUser } from 'lib/identityLink';
 import { matchSettingsComplete, normalizeLoveQuestionnairePayload } from 'lib/loveQuestionnaire';
-import { normalizeMatchContactInput } from 'lib/profileFields';
+import { normalizeMatchContactInput, normalizeNicknameInput } from 'lib/profileFields';
 import { readJson } from 'lib/request';
 import { bizError, httpError, success } from 'lib/response';
 import { isValidTargetGender } from 'lib/rose';
@@ -182,6 +182,10 @@ export async function POST(request) {
       if (!contactResult.ok) {
         return bizError(400, contactResult.msg);
       }
+      const nicknameResult = normalizeNicknameInput(merged.match_settings.nickname);
+      if (!nicknameResult.ok) {
+        return bizError(400, nicknameResult.msg);
+      }
       const includeMessage = Boolean(merged.match_settings.include_message_to_partner);
       const rawMessage = typeof merged.match_settings.message_to_partner === 'string'
         ? merged.match_settings.message_to_partner.trim()
@@ -212,8 +216,9 @@ export async function POST(request) {
             xinghua_preferred_time = $5,
             xinghua_match_target_ti = $6,
             auto_weekly_match = TRUE,
-            xinghua_festival_participate = TRUE
-        WHERE id = $7
+            xinghua_festival_participate = TRUE,
+            nickname = $7
+        WHERE id = $8
         `,
         [
           merged.hard_filter.target_gender,
@@ -222,10 +227,12 @@ export async function POST(request) {
           includeMessage ? rawMessage : '',
           merged.hard_filter.preferred_time,
           normalizeTargetXinghuaTi(merged.hard_filter.target_xinghua_ti),
+          nicknameResult.value || null,
           authResult.user.id
         ]
       );
 
+      merged.match_settings.nickname = nicknameResult.value;
       merged.match_settings.share_contact_with_match = contactResult.share;
       merged.match_settings.match_contact_detail = contactResult.detail;
       merged.match_settings.include_message_to_partner = includeMessage;

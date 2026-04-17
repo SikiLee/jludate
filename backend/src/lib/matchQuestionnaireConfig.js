@@ -303,14 +303,23 @@ function normalizeItemsSort(items, { sortKey = 'display_order' } = {}) {
 }
 
 export async function seedMatchQuestionnaireConfigIfEmpty(db) {
-  const typeCount = await db.query(
-    `SELECT COUNT(*)::int AS count
-     FROM unidate_app.match_questionnaire_items
+  const typeCountRes = await db.query(
+    `
+    SELECT questionnaire_type, COUNT(*)::int AS count
+    FROM unidate_app.match_questionnaire_items
+    WHERE questionnaire_type IN ('love', 'friend')
+    GROUP BY questionnaire_type
     `
   );
-  const count = typeCount.rows[0]?.count ?? 0;
-  if (count > 0) {
-    return { seeded: false, count };
+  const countByType = { love: 0, friend: 0 };
+  for (const row of typeCountRes.rows) {
+    if (row.questionnaire_type === 'love' || row.questionnaire_type === 'friend') {
+      countByType[row.questionnaire_type] = Number(row.count || 0);
+    }
+  }
+  const typesToSeed = ['love', 'friend'].filter((type) => countByType[type] === 0);
+  if (typesToSeed.length === 0) {
+    return { seeded: false, count: countByType.love + countByType.friend };
   }
 
   const txt = await readDefaultTxtFile();
@@ -321,7 +330,7 @@ export async function seedMatchQuestionnaireConfigIfEmpty(db) {
 
   const deepParsed = parseScale5LRDeepFromTxt(txt);
 
-  const hardSettingsDefaults = getXinghuaHardSettingsItems();
+  const hardSettingsDefaults = getDefaultHardSettingsItems();
 
   const deepQuestionsByType = {
     love: deepParsed.love.questions,
@@ -336,7 +345,7 @@ export async function seedMatchQuestionnaireConfigIfEmpty(db) {
   await db.query('BEGIN');
   try {
     // Modules
-    for (const type of ['love', 'friend']) {
+    for (const type of typesToSeed) {
       const moduleMap = moduleTitlesByType[type];
       if (!moduleMap || moduleMap.size === 0) continue;
 
@@ -359,7 +368,7 @@ export async function seedMatchQuestionnaireConfigIfEmpty(db) {
     }
 
     // Items: deep (scale5_lr)
-    for (const type of ['love', 'friend']) {
+    for (const type of typesToSeed) {
       const questions = deepQuestionsByType[type] || [];
       // Sort by module + question number, so display_order is stable initially.
       const sorted = [...questions].sort((a, b) => {
@@ -404,7 +413,7 @@ export async function seedMatchQuestionnaireConfigIfEmpty(db) {
     }
 
     // Items: hard + settings (fixed kinds)
-    for (const type of ['love', 'friend']) {
+    for (const type of typesToSeed) {
       const base = hardSettingsDefaults;
       for (const item of base) {
         await db.query(
@@ -442,7 +451,8 @@ export async function seedMatchQuestionnaireConfigIfEmpty(db) {
     }
 
     await db.query('COMMIT');
-    return { seeded: true, count: deepQuestionsByType.love.length + deepQuestionsByType.friend.length };
+    const seededCount = typesToSeed.reduce((sum, type) => sum + (deepQuestionsByType[type]?.length || 0), 0);
+    return { seeded: true, count: seededCount };
   } catch (e) {
     await db.query('ROLLBACK');
     throw e;

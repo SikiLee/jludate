@@ -23,6 +23,7 @@ function emptyPayload() {
       target_xinghua_ti: 'same_as_me'
     },
     match_settings: {
+      nickname: '',
       share_contact_with_match: false,
       match_contact_detail: '',
       include_message_to_partner: false,
@@ -283,7 +284,20 @@ export default function XinghuaFestival() {
               <p className="text-[#1a1a2e] font-bold font-shsans mb-4">匹配设置（复用交友/恋爱）</p>
               <div className="space-y-5">
                 <div>
-                  <p className="text-sm font-bold text-[#1a1a2e] mb-2 font-shsans">1. 是否向对方展示联系方式</p>
+                  <p className="text-sm font-bold text-[#1a1a2e] mb-2 font-shsans">1. 你的昵称名是？</p>
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={payload.match_settings.nickname || ''}
+                    onChange={(e) => updateSettings({ nickname: e.target.value })}
+                    className="w-full px-5 py-4 rounded-2xl border-2 border-roseTint/40 focus:border-szured outline-none bg-white font-shsans"
+                    placeholder="可不填，最多20字"
+                  />
+                  <p className="mt-1 text-xs text-[#4a4a5e]/80 font-shsans">已输入 {String((payload.match_settings.nickname || '').length)}/20</p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-bold text-[#1a1a2e] mb-2 font-shsans">2. 是否向对方展示联系方式</p>
                   <div className="flex gap-3">
                     <button
                       type="button"
@@ -325,7 +339,7 @@ export default function XinghuaFestival() {
                 ) : null}
 
                 <div>
-                  <p className="text-sm font-bold text-[#1a1a2e] mb-2 font-shsans">2. 是否有对对方想说的话</p>
+                  <p className="text-sm font-bold text-[#1a1a2e] mb-2 font-shsans">3. 是否有对对方想说的话</p>
                   <div className="flex gap-3">
                     <button
                       type="button"

@@ -45,7 +45,7 @@ function ConfigSection({ title, defaultOpen = false, children }) {
 const DEFAULT_FAQ_ITEMS = [
   {
     q: '使用流程是什么？',
-    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周五晚八点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
+    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每{MATCH_REVEAL_AT}，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
   },
   {
     q: '你们如何处理我的数据？',
@@ -82,7 +82,7 @@ const DEFAULT_WHY_CHOOSE_US_ITEMS = [
   {
     icon: 'clock',
     title: '每周一次',
-    desc: '没有"左滑右滑"。每周五晚八点统一揭晓，一周至多一次配对，让等待变得有意义。'
+    desc: '没有"左滑右滑"。每{MATCH_REVEAL_AT}统一揭晓，一周至多一次配对，让等待变得有意义。'
   },
   {
     icon: 'target',
@@ -116,6 +116,15 @@ const DEFAULT_EMAIL_TEMPLATES = {
     body: [
       '【{{brand_name}} 每周匹配】',
       '你已成功匹配，请登录网站查看匹配详情与对话。',
+      '查看入口：{{match_url}}',
+      '派发时间：{{run_at}} ({{timezone}})'
+    ].join('\n')
+  },
+  match_failed: {
+    subject: '【{{brand_name}}】本周暂未匹配到合适对象',
+    body: [
+      '【{{brand_name}} 每周匹配】',
+      '本周暂未匹配到合适对象，我们下周会继续为你尝试。',
       '查看入口：{{match_url}}',
       '派发时间：{{run_at}} ({{timezone}})'
     ].join('\n')
@@ -197,6 +206,9 @@ function normalizeEmailTemplates(rawValue) {
   const matchResult = rawValue.match_result && typeof rawValue.match_result === 'object'
     ? rawValue.match_result
     : {};
+  const matchFailed = rawValue.match_failed && typeof rawValue.match_failed === 'object'
+    ? rawValue.match_failed
+    : {};
   const exceptionApproved = rawValue.exception_approved && typeof rawValue.exception_approved === 'object'
     ? rawValue.exception_approved
     : {};
@@ -208,6 +220,8 @@ function normalizeEmailTemplates(rawValue) {
   const verificationBody = typeof verification.body === 'string' ? verification.body.replace(/\r\n/g, '\n').trim() : '';
   const matchResultSubject = typeof matchResult.subject === 'string' ? matchResult.subject.trim() : '';
   const matchResultBody = typeof matchResult.body === 'string' ? matchResult.body.replace(/\r\n/g, '\n').trim() : '';
+  const matchFailedSubject = typeof matchFailed.subject === 'string' ? matchFailed.subject.trim() : '';
+  const matchFailedBody = typeof matchFailed.body === 'string' ? matchFailed.body.replace(/\r\n/g, '\n').trim() : '';
   const exceptionApprovedSubject = typeof exceptionApproved.subject === 'string' ? exceptionApproved.subject.trim() : '';
   const exceptionApprovedBody = typeof exceptionApproved.body === 'string' ? exceptionApproved.body.replace(/\r\n/g, '\n').trim() : '';
   const exceptionRejectedSubject = typeof exceptionRejected.subject === 'string' ? exceptionRejected.subject.trim() : '';
@@ -221,6 +235,10 @@ function normalizeEmailTemplates(rawValue) {
     match_result: {
       subject: matchResultSubject || DEFAULT_EMAIL_TEMPLATES.match_result.subject,
       body: matchResultBody || DEFAULT_EMAIL_TEMPLATES.match_result.body
+    },
+    match_failed: {
+      subject: matchFailedSubject || DEFAULT_EMAIL_TEMPLATES.match_failed.subject,
+      body: matchFailedBody || DEFAULT_EMAIL_TEMPLATES.match_failed.body
     },
     exception_approved: {
       subject: exceptionApprovedSubject || DEFAULT_EMAIL_TEMPLATES.exception_approved.subject,
@@ -366,6 +384,10 @@ function AdminSiteSettings() {
     }
     if (!emailTemplates.match_result.subject || !emailTemplates.match_result.body) {
       toast.error('请完整填写匹配结果邮件模板');
+      return;
+    }
+    if (!emailTemplates.match_failed?.subject || !emailTemplates.match_failed?.body) {
+      toast.error('请完整填写匹配失败邮件模板');
       return;
     }
     if (!emailTemplates.exception_approved?.subject || !emailTemplates.exception_approved?.body) {
@@ -720,6 +742,23 @@ function AdminSiteSettings() {
             </div>
 
             <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">
+              <h3 className="text-sm font-bold text-slate-700">匹配失败邮件</h3>
+              <input
+                type="text"
+                value={form.email_templates?.match_failed?.subject || ''}
+                onChange={(e) => handleEmailTemplateChange('match_failed', 'subject', e.target.value)}
+                placeholder="邮件标题"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 outline-none transition"
+              />
+              <textarea
+                value={form.email_templates?.match_failed?.body || ''}
+                onChange={(e) => handleEmailTemplateChange('match_failed', 'body', e.target.value)}
+                placeholder="邮件正文"
+                className="w-full min-h-[140px] px-3 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 outline-none transition font-mono text-sm"
+              />
+            </div>
+
+            <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">
               <h3 className="text-sm font-bold text-slate-700">异常邮箱核验通过通知</h3>
               <input
                 type="text"
@@ -767,7 +806,7 @@ function AdminSiteSettings() {
               新增条目
             </button>
           </div>
-          <p className="text-xs text-slate-500 mb-3">支持变量：`{'{XXDate}'}`、`{'{ALLOWED_DOMAINS}'}`</p>
+          <p className="text-xs text-slate-500 mb-3">支持变量：`{'{XXDate}'}`、`{'{ALLOWED_DOMAINS}'}`、`{'{MATCH_REVEAL_AT}'}`（会随“自动配对时间”联动）</p>
 
           <div className="space-y-4">
             {form.why_choose_us_items.map((item, index) => (

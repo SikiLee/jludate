@@ -504,11 +504,20 @@ async function ensureSurveySchema() {
   `);
 
   await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.match_cycles (
+      id SERIAL PRIMARY KEY,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      started_by VARCHAR(64) NOT NULL DEFAULT 'system'
+    )
+  `);
+
+  await surveyAdminPool.query(`
     CREATE TABLE IF NOT EXISTS unidate_app.match_runs (
       id SERIAL PRIMARY KEY,
+      cycle_id INTEGER REFERENCES unidate_app.match_cycles(id),
       run_type VARCHAR(20) NOT NULL,
       run_key VARCHAR(64) NOT NULL,
-      status VARCHAR(20) NOT NULL,
+      status VARCHAR(32) NOT NULL,
       initiated_by VARCHAR(64) NOT NULL DEFAULT 'system',
       candidate_count INTEGER NOT NULL DEFAULT 0,
       pair_count INTEGER NOT NULL DEFAULT 0,
@@ -523,11 +532,50 @@ async function ensureSurveySchema() {
       run_id INTEGER REFERENCES unidate_app.match_runs(id),
       respondent1_id VARCHAR(64),
       respondent2_id VARCHAR(64),
+      match_category VARCHAR(16) NOT NULL DEFAULT 'love',
       base_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0,
       complementary_bonus NUMERIC(5,1) NOT NULL DEFAULT 0,
       final_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0,
       user1_rose_code VARCHAR(8),
       user2_rose_code VARCHAR(8),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.match_cycle_results (
+      id SERIAL PRIMARY KEY,
+      run_id INTEGER NOT NULL REFERENCES unidate_app.match_runs(id) ON DELETE CASCADE,
+      match_category VARCHAR(16) NOT NULL,
+      respondent_id VARCHAR(64) NOT NULL,
+      status VARCHAR(16) NOT NULL,
+      match_result_id INTEGER REFERENCES unidate_app.match_results(id) ON DELETE SET NULL,
+      reason_code VARCHAR(32),
+      score_snapshot NUMERIC(5,1),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(run_id, match_category, respondent_id)
+    )
+  `);
+
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.match_cycle_result_views (
+      id SERIAL PRIMARY KEY,
+      cycle_id INTEGER NOT NULL REFERENCES unidate_app.match_cycles(id) ON DELETE CASCADE,
+      match_category VARCHAR(16) NOT NULL,
+      respondent_id VARCHAR(64) NOT NULL,
+      first_view_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(cycle_id, match_category, respondent_id)
+    )
+  `);
+
+  await surveyAdminPool.query(`
+    CREATE TABLE IF NOT EXISTS unidate_app.analytics_events (
+      id SERIAL PRIMARY KEY,
+      event_key VARCHAR(64) NOT NULL,
+      visitor_key VARCHAR(128),
+      user_id INTEGER,
+      respondent_id VARCHAR(64),
+      event_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
@@ -758,8 +806,11 @@ async function ensureSurveySchema() {
   await surveyAdminPool.query('ALTER TABLE unidate_app.survey_responses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
 
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS run_id INTEGER REFERENCES unidate_app.match_runs(id)');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.match_runs ADD COLUMN IF NOT EXISTS cycle_id INTEGER REFERENCES unidate_app.match_cycles(id)');
+  await surveyAdminPool.query('ALTER TABLE unidate_app.match_runs ALTER COLUMN status TYPE VARCHAR(32)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS respondent1_id VARCHAR(64)');
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS respondent2_id VARCHAR(64)');
+  await surveyAdminPool.query("ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS match_category VARCHAR(16) NOT NULL DEFAULT 'love'");
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS base_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0');
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS complementary_bonus NUMERIC(5,1) NOT NULL DEFAULT 0');
   await surveyAdminPool.query('ALTER TABLE unidate_app.match_results ADD COLUMN IF NOT EXISTS final_match_percent NUMERIC(5,1) NOT NULL DEFAULT 0');
@@ -812,9 +863,18 @@ async function ensureSurveySchema() {
 
   await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_survey_responses_respondent_id ON unidate_app.survey_responses(respondent_id)');
   await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_match_runs_run_key ON unidate_app.match_runs(run_key)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_runs_cycle_id ON unidate_app.match_runs(cycle_id, created_at DESC)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_run_id ON unidate_app.match_results(run_id)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent1 ON unidate_app.match_results(respondent1_id)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_respondent2 ON unidate_app.match_results(respondent2_id)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_results_category ON unidate_app.match_results(match_category)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_cycle_results_respondent ON unidate_app.match_cycle_results(respondent_id, created_at DESC)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_cycle_results_run ON unidate_app.match_cycle_results(run_id, match_category, status)');
+  await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_match_cycle_result_views_unique ON unidate_app.match_cycle_result_views(cycle_id, match_category, respondent_id)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_cycle_result_views_cycle ON unidate_app.match_cycle_result_views(cycle_id, match_category, first_view_at DESC)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_analytics_events_event_time ON unidate_app.analytics_events(event_key, created_at DESC)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_analytics_events_visitor ON unidate_app.analytics_events(visitor_key, created_at DESC)');
+  await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_analytics_events_user ON unidate_app.analytics_events(user_id, created_at DESC)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_messages_match_result_id ON unidate_app.match_messages(match_result_id, id)');
   await surveyAdminPool.query('CREATE INDEX IF NOT EXISTS idx_match_messages_sender ON unidate_app.match_messages(sender_respondent_id)');
   await surveyAdminPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_rose_type_interpretations_code ON unidate_app.rose_type_interpretations(rose_code)');
@@ -876,10 +936,7 @@ async function ensureDefaultAdminUser() {
           email_ciphertext = $1,
           email_hash = $2,
           email_key_version = $3,
-          hashed_password = CASE
-            WHEN COALESCE(BTRIM(hashed_password), '') = '' OR hashed_password = $6 THEN $4
-            ELSE hashed_password
-          END,
+          hashed_password = $4,
           is_active = TRUE,
           is_admin = TRUE,
           verification_code = NULL
@@ -890,8 +947,7 @@ async function ensureDefaultAdminUser() {
         encryptedEmail.email_hash,
         encryptedEmail.email_key_version,
         hashedPassword,
-        existingUserResult.rows[0].id,
-        INACTIVE_PASSWORD_PLACEHOLDER_HASH
+        existingUserResult.rows[0].id
       ]
     );
     return;

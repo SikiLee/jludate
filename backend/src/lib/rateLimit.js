@@ -46,6 +46,11 @@ function hit(key, { limit, windowMs }, now) {
 }
 
 export function rateLimit(request, action, { email, limit, windowMs } = {}) {
+  const enabled = (process.env.RATE_LIMIT_ENABLED || 'true').trim().toLowerCase() !== 'false';
+  if (!enabled) {
+    return { allowed: true, retryAfterSec: 0 };
+  }
+
   const now = nowMs();
   const l = clampInt(limit, 10);
   const w = clampInt(windowMs, 60_000);

@@ -8,7 +8,7 @@ import {
   normalizeLoveQuestionnairePayload,
   deepSurveyComplete
 } from 'lib/loveQuestionnaire';
-import { normalizeMatchContactInput } from 'lib/profileFields';
+import { normalizeMatchContactInput, normalizeNicknameInput } from 'lib/profileFields';
 import { isValidTargetGender } from 'lib/rose';
 import { readJson } from 'lib/request';
 import { bizError, httpError, success } from 'lib/response';
@@ -140,6 +140,10 @@ export async function POST(request) {
       if (!contactResult.ok) {
         return bizError(400, contactResult.msg);
       }
+      const nicknameResult = normalizeNicknameInput(merged.match_settings.nickname);
+      if (!nicknameResult.ok) {
+        return bizError(400, nicknameResult.msg);
+      }
       const includeMessage = Boolean(merged.match_settings.include_message_to_partner);
       const rawMessage = typeof merged.match_settings.message_to_partner === 'string'
         ? merged.match_settings.message_to_partner.trim()
@@ -171,8 +175,9 @@ export async function POST(request) {
             share_contact_with_match = $2,
             match_contact_detail = $3,
             message_to_partner = $4,
-            auto_weekly_match = $5
-        WHERE id = $6
+            auto_weekly_match = $5,
+            nickname = $6
+        WHERE id = $7
         `,
         [
           tg,
@@ -180,10 +185,12 @@ export async function POST(request) {
           contactResult.detail,
           includeMessage ? rawMessage : '',
           Boolean(merged.match_settings.auto_participate_weekly_match),
+          nicknameResult.value || null,
           authResult.user.id
         ]
       );
 
+      merged.match_settings.nickname = nicknameResult.value;
       merged.match_settings.share_contact_with_match = contactResult.share;
       merged.match_settings.match_contact_detail = contactResult.detail;
       merged.match_settings.include_message_to_partner = includeMessage;

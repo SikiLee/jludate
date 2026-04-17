@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, AlertTriangle } from 'lucide-react';
+import { Globe, AlertTriangle, BarChart3 } from 'lucide-react';
 import AdminMatchQuestionnaire from './AdminMatchQuestionnaire';
 import AdminSiteSettings from './AdminSiteSettings';
 import AdminEmailExceptions from './AdminEmailExceptions';
+import AdminMatchData from './AdminMatchData';
 
 function Admin() {
   const [activeTab, setActiveTab] = useState('site');
@@ -29,6 +30,24 @@ function Admin() {
             )}
             <Globe className="w-5 h-5 relative z-10" />
             <span className="relative z-10">站点配置</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('match_data')}
+            className={`relative px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 z-10 ${
+              activeTab === 'match_data' ? 'text-violet-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
+            }`}
+          >
+            {activeTab === 'match_data' && (
+              <motion.div
+                layoutId="admin-tab-bg"
+                className="absolute inset-0 bg-violet-50/90 rounded-xl"
+                initial={false}
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <BarChart3 className="w-5 h-5 relative z-10" />
+            <span className="relative z-10">匹配数据模块</span>
           </button>
 
           <button
@@ -90,6 +109,17 @@ function Admin() {
               transition={{ duration: 0.2 }}
             >
               <AdminMatchQuestionnaire />
+            </motion.div>
+          )}
+          {activeTab === 'match_data' && (
+            <motion.div
+              key="match_data"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AdminMatchData />
             </motion.div>
           )}
 

@@ -10,6 +10,19 @@ import {
   XINGHUA_TI_STORAGE_KEY
 } from '../constants/xinghuaTi';
 
+function getVisitorKey() {
+  const storageKey = 'jludate_visitor_key';
+  try {
+    const existing = window.localStorage.getItem(storageKey);
+    if (existing && existing.trim()) return existing.trim();
+    const generated = `v-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem(storageKey, generated);
+    return generated;
+  } catch {
+    return '';
+  }
+}
+
 function computeResult({ answersByNumber }) {
   const letterCounts = new Map();
 

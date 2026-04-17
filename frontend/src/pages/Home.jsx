@@ -4,7 +4,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Clock, ShieldCheck, Target, ChevronDown } from 'lucide-react';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { getAccessToken } from '../lib/storage';
+import { fireAndForgetTrack } from '../lib/track';
 import SakuraPetalsOverlay from '../components/SakuraPetalsOverlay';
+
+function getVisitorKey() {
+  const storageKey = 'jludate_visitor_key';
+  try {
+    const existing = localStorage.getItem(storageKey);
+    if (existing && existing.trim()) return existing.trim();
+    const generated = `v-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(storageKey, generated);
+    return generated;
+  } catch {
+    return '';
+  }
+}
 
 function Home() {
   const navigate = useNavigate();
@@ -141,6 +155,15 @@ function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const visitorKey = getVisitorKey();
+    fireAndForgetTrack({
+      event_key: 'site_click',
+      visitor_key: visitorKey,
+      payload: { page: 'home' }
+    });
+  }, []);
+
   const numberFormatter = new Intl.NumberFormat('zh-CN');
   const registeredUsersText = metrics.registered_users === null
     ? '--'
@@ -163,7 +186,8 @@ function Home() {
     return text
       .replace(/\{XXDate\}/g, brandName)
       .replace(/\{BRAND_NAME\}/g, brandName)
-      .replace(/\{ALLOWED_DOMAINS\}/g, domainText);
+      .replace(/\{ALLOWED_DOMAINS\}/g, domainText)
+      .replace(/\{MATCH_REVEAL_AT\}/g, scheduleRevealLabel);
   };
 
   const faqs = Array.isArray(siteConfig.faq_items) && siteConfig.faq_items.length > 0
@@ -171,7 +195,7 @@ function Home() {
     : [
       {
         q: '我们是谁',
-        a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周五晚八点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
+        a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每{MATCH_REVEAL_AT}，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
       },
       {
         q: '这是恋爱还是交友平台？',
@@ -179,7 +203,7 @@ function Home() {
       },
       {
         q: '使用流程是什么？',
-        a: '用吉大学生邮箱注册，花 10 分钟填写一份关于您的恋爱方式的问卷，然后每周五晚八点您将收到一封信封，附有您与TA的匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，我们将为您给对方发送您的邮箱。接下来的流程，由你们自己决定。'
+        a: '用吉大学生邮箱注册，花 10 分钟填写一份关于您的恋爱方式的问卷，然后每{MATCH_REVEAL_AT}您将收到一封信封，附有您与TA的匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，我们将为您给对方发送您的邮箱。接下来的流程，由你们自己决定。'
       },
          
       {
@@ -208,7 +232,7 @@ function Home() {
       {
         icon: 'clock',
         title: '一周一次',
-        desc: '一周仅一次配对，每周五晚八点统一揭晓，让等待变得有意义。'
+        desc: '一周仅一次配对，每{MATCH_REVEAL_AT}统一揭晓，让等待变得有意义。'
       },
       {
         icon: 'target',
@@ -283,7 +307,7 @@ function Home() {
           <p className="text-lg md:text-xl mb-12 font-extralight max-w-2xl mx-auto leading-relaxed font-shsans text-[#4a4a5e] tracking-wide">
             拯救你的杏花节寂寞
             <br />
-            周五周六连续两晚八点匹配，<br />
+            周六晚八点杏花搭子匹配<br />
             周日杏花节当天开放杏花搭子现场匹配！
           </p>
           {!isLoggedIn ? (
@@ -297,6 +321,13 @@ function Home() {
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => navigate('/xinghua-ti/result')}
+                className="px-8 py-4 bg-white/90 border-2 border-roseTint/45 text-[#4a4a5e] font-bold rounded-full hover:bg-roseLight/35 transition-all shadow-[0_8px_24px_rgba(224,154,173,0.2)] transform hover:-translate-y-0.5 text-lg font-shsans"
+              >
+                查看南岭杏花ti结果
+              </button>
               <button
                 type="button"
                 onClick={() => navigate('/match')}
@@ -323,7 +354,7 @@ function Home() {
             </div>
             <div className="mt-6 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/80 border border-roseTint/60 text-szured font-semibold shadow-sm">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              加入 500+ jluer
+              join 500+ jluer
             </div>
           </div>
           {/* {showAnyMetric ? (

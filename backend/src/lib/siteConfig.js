@@ -57,7 +57,7 @@ export const DEFAULT_MATCH_SCHEDULE = Object.freeze({
 export const DEFAULT_FAQ_ITEMS = [
   {
     q: '使用流程是什么？',
-    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每周五晚八点，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
+    a: '用校园邮箱注册，花 10 分钟填写一份关于您的价值观和生活方式的问卷，并「确认参与」，然后等待。每{MATCH_REVEAL_AT}，您将收到一封信封，附有 TA 的昵称、匹配度，以及我们认为你们会合拍的理由。如果您选择联系 TA，双方将各自收到对方的邮箱。接下来的流程，由你们自己决定。'
   },
   {
     q: '你们如何处理我的数据？',
@@ -76,7 +76,7 @@ export const DEFAULT_WHY_CHOOSE_US_ITEMS = [
   {
     icon: 'clock',
     title: '每周一次',
-    desc: '没有"左滑右滑"。每周五晚八点统一揭晓，一周至多一次配对，让等待变得有意义。'
+    desc: '没有"左滑右滑"。每{MATCH_REVEAL_AT}统一揭晓，一周至多一次配对，让等待变得有意义。'
   },
   {
     icon: 'target',
@@ -109,6 +109,16 @@ export const DEFAULT_EMAIL_TEMPLATES = Object.freeze({
     body: [
       '【{{brand_name}} 每周匹配】',
       '你已成功匹配，请登录网站查看匹配详情与对话。',
+      '查看入口：{{match_url}}',
+      '派发时间：{{run_at}} ({{timezone}})'
+    ].join('\n')
+  }),
+  match_failed: Object.freeze({
+    subject: '【{{brand_name}}】本周暂未匹配到合适对象',
+    body: [
+      '【{{brand_name}} 每周匹配】',
+      '本周暂未匹配到合适对象，我们下周会继续为你尝试。',
+      '你可以随时登录查看状态或完善问卷，以提升匹配成功率。',
       '查看入口：{{match_url}}',
       '派发时间：{{run_at}} ({{timezone}})'
     ].join('\n')
@@ -157,6 +167,23 @@ const WHY_CHOOSE_US_ICON_SET = new Set(['clock', 'target', 'shield', 'heart']);
 
 function getShanghaiWallDate(date = new Date()) {
   return new Date(date.toLocaleString('en-US', { timeZone: SHANGHAI_TIME_ZONE }));
+}
+
+function formatMatchRevealLabel(schedule) {
+  const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const day = Number.isInteger(schedule?.day_of_week) ? schedule.day_of_week : DEFAULT_MATCH_SCHEDULE.day_of_week;
+  const hour = Number.isInteger(schedule?.hour) ? schedule.hour : DEFAULT_MATCH_SCHEDULE.hour;
+  const minute = Number.isInteger(schedule?.minute) ? schedule.minute : DEFAULT_MATCH_SCHEDULE.minute;
+  const dayLabel = weekdayNames[day] || '周五';
+  const timeLabel = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  return `${dayLabel} ${timeLabel}`;
+}
+
+function applyScheduleTokens(text, schedule) {
+  if (typeof text !== 'string') {
+    return '';
+  }
+  return text.replace(/\{MATCH_REVEAL_AT\}/g, formatMatchRevealLabel(schedule));
 }
 
 function cloneDefaultMatchSchedule() {
@@ -293,8 +320,8 @@ function normalizeFaqItems(rawValue) {
       continue;
     }
 
-    const q = typeof item.q === 'string' ? item.q.trim() : '';
-    const a = typeof item.a === 'string' ? item.a.trim() : '';
+    const q = normalizeLegacyMatchRevealText(typeof item.q === 'string' ? item.q.trim() : '');
+    const a = normalizeLegacyMatchRevealText(typeof item.a === 'string' ? item.a.trim() : '');
     if (!q || !a) {
       continue;
     }
@@ -317,8 +344,8 @@ function normalizeWhyChooseUsItems(rawValue) {
     }
 
     const icon = typeof item.icon === 'string' ? item.icon.trim().toLowerCase() : '';
-    const title = typeof item.title === 'string' ? item.title.trim() : '';
-    const desc = typeof item.desc === 'string' ? item.desc.trim() : '';
+    const title = normalizeLegacyMatchRevealText(typeof item.title === 'string' ? item.title.trim() : '');
+    const desc = normalizeLegacyMatchRevealText(typeof item.desc === 'string' ? item.desc.trim() : '');
     if (!WHY_CHOOSE_US_ICON_SET.has(icon) || !title || !desc) {
       continue;
     }
@@ -327,6 +354,32 @@ function normalizeWhyChooseUsItems(rawValue) {
   }
 
   return rows;
+}
+
+function normalizeLegacyMatchRevealText(text) {
+  if (typeof text !== 'string' || !text) {
+    return '';
+  }
+  let out = text;
+  // Already tokenized.
+  if (out.includes('{MATCH_REVEAL_AT}')) {
+    return out;
+  }
+  // Canonical replacements for legacy hardcoded schedule phrases.
+  const legacyPatterns = [
+    /每周五晚八点/g,
+    /周五晚八点/g,
+    /每周五晚上八点/g,
+    /周五晚上八点/g,
+    /每周五\s*20:00/g,
+    /周五\s*20:00/g,
+    /每周五\s*20点/g,
+    /周五\s*20点/g
+  ];
+  for (const re of legacyPatterns) {
+    out = out.replace(re, '每{MATCH_REVEAL_AT}');
+  }
+  return out;
 }
 
 function normalizeHomeMetricsVisibility(rawValue, { strict = false } = {}) {
@@ -390,6 +443,10 @@ function cloneDefaultEmailTemplates() {
       subject: DEFAULT_EMAIL_TEMPLATES.match_result.subject,
       body: DEFAULT_EMAIL_TEMPLATES.match_result.body
     },
+    match_failed: {
+      subject: DEFAULT_EMAIL_TEMPLATES.match_failed.subject,
+      body: DEFAULT_EMAIL_TEMPLATES.match_failed.body
+    },
     exception_approved: {
       subject: DEFAULT_EMAIL_TEMPLATES.exception_approved.subject,
       body: DEFAULT_EMAIL_TEMPLATES.exception_approved.body
@@ -425,6 +482,9 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
   const matchResult = rawValue.match_result && typeof rawValue.match_result === 'object'
     ? rawValue.match_result
     : {};
+  const matchFailed = rawValue.match_failed && typeof rawValue.match_failed === 'object'
+    ? rawValue.match_failed
+    : {};
   const exceptionApproved = rawValue.exception_approved && typeof rawValue.exception_approved === 'object'
     ? rawValue.exception_approved
     : {};
@@ -436,6 +496,8 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
   const verificationBody = normalizeTemplateText(verification.body, MAX_EMAIL_BODY_LENGTH);
   const matchResultSubject = normalizeTemplateText(matchResult.subject, MAX_EMAIL_SUBJECT_LENGTH);
   const matchResultBody = normalizeTemplateText(matchResult.body, MAX_EMAIL_BODY_LENGTH);
+  const matchFailedSubject = normalizeTemplateText(matchFailed.subject, MAX_EMAIL_SUBJECT_LENGTH);
+  const matchFailedBody = normalizeTemplateText(matchFailed.body, MAX_EMAIL_BODY_LENGTH);
   const exceptionApprovedSubject = normalizeTemplateText(exceptionApproved.subject, MAX_EMAIL_SUBJECT_LENGTH);
   const exceptionApprovedBody = normalizeTemplateText(exceptionApproved.body, MAX_EMAIL_BODY_LENGTH);
   const exceptionRejectedSubject = normalizeTemplateText(exceptionRejected.subject, MAX_EMAIL_SUBJECT_LENGTH);
@@ -448,6 +510,8 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
       || !verificationBody
       || !matchResultSubject
       || !matchResultBody
+      || !matchFailedSubject
+      || !matchFailedBody
       || !exceptionApprovedSubject
       || !exceptionApprovedBody
       || !exceptionRejectedSubject
@@ -465,6 +529,10 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
     match_result: {
       subject: matchResultSubject || DEFAULT_EMAIL_TEMPLATES.match_result.subject,
       body: matchResultBody || DEFAULT_EMAIL_TEMPLATES.match_result.body
+    },
+    match_failed: {
+      subject: matchFailedSubject || DEFAULT_EMAIL_TEMPLATES.match_failed.subject,
+      body: matchFailedBody || DEFAULT_EMAIL_TEMPLATES.match_failed.body
     },
     exception_approved: {
       subject: exceptionApprovedSubject || DEFAULT_EMAIL_TEMPLATES.exception_approved.subject,
@@ -617,18 +685,28 @@ async function readCoreSiteSettings(db) {
   const brandName = normalizeBrandName(brandRaw) || DEFAULT_BRAND_NAME;
   const allowedEmailDomains = normalizeAllowedDomainsOrDefault(domainsRaw);
   const matchSchedule = normalizeMatchSchedule(matchScheduleRaw) || cloneDefaultMatchSchedule();
-  const faqItems = normalizeFaqItems(faqRaw);
-  const whyChooseUsItems = normalizeWhyChooseUsItems(whyChooseRaw);
+  const faqItemsRaw = normalizeFaqItems(faqRaw);
+  const whyChooseUsItemsRaw = normalizeWhyChooseUsItems(whyChooseRaw);
   const homeMetricsVisibility = normalizeHomeMetricsVisibility(homeMetricsVisibilityRaw);
   const emailTemplates = normalizeEmailTemplates(emailTemplatesRaw);
   const crossSchoolMatchingEnabled = normalizeCrossSchoolMatchingEnabled(crossSchoolMatchingRaw);
+
+  const faqItems = (faqItemsRaw.length > 0 ? faqItemsRaw : [...DEFAULT_FAQ_ITEMS]).map((item) => ({
+    q: applyScheduleTokens(item.q, matchSchedule),
+    a: applyScheduleTokens(item.a, matchSchedule)
+  }));
+  const whyChooseUsItems = (whyChooseUsItemsRaw.length > 0 ? whyChooseUsItemsRaw : [...DEFAULT_WHY_CHOOSE_US_ITEMS]).map((item) => ({
+    ...item,
+    title: applyScheduleTokens(item.title, matchSchedule),
+    desc: applyScheduleTokens(item.desc, matchSchedule)
+  }));
 
   return {
     brand_name: brandName,
     allowed_email_domains: allowedEmailDomains,
     match_schedule: matchSchedule,
-    faq_items: faqItems.length > 0 ? faqItems : [...DEFAULT_FAQ_ITEMS],
-    why_choose_us_items: whyChooseUsItems.length > 0 ? whyChooseUsItems : [...DEFAULT_WHY_CHOOSE_US_ITEMS],
+    faq_items: faqItems,
+    why_choose_us_items: whyChooseUsItems,
     home_metrics_visibility: homeMetricsVisibility,
     email_templates: emailTemplates,
     cross_school_matching_enabled: crossSchoolMatchingEnabled,

@@ -1,0 +1,76 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: identity_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d identity_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org/}
+    environment:
+      - IDENTITY_DATABASE_URL=postgresql://identity_app:identity_password@db:5432/identity_db
+      - SURVEY_DATABASE_URL=postgresql://survey_app:survey_password@db:5432/survey_db
+      - DATABASE_URL=postgresql://survey_app:survey_password@db:5432/survey_db
+      - DATABASE_ADMIN_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@db:5432/postgres
+      - SMTP_ENABLED=${SMTP_ENABLED:-false}
+      - SMTP_HOST=${SMTP_HOST:-smtp.example.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_REQUIRE_TLS=${SMTP_REQUIRE_TLS:-false}
+      - SMTP_TLS_REJECT_UNAUTHORIZED=${SMTP_TLS_REJECT_UNAUTHORIZED:-true}
+      - EXPOSE_VERIFICATION_CODE_FOR_TESTS=${EXPOSE_VERIFICATION_CODE_FOR_TESTS:-false}
+      - DEFAULT_ALLOWED_EMAIL_DOMAINS=${DEFAULT_ALLOWED_EMAIL_DOMAINS:-mails.jlu.edu.cn}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - BCRYPT_ROUNDS=12
+      - PRIVACY_ACTIVE_KEY_VERSION=v1
+      - PRIVACY_KEYRING_JSON=${PRIVACY_KEYRING_JSON:?PRIVACY_KEYRING_JSON is required}
+      - ENABLE_DEFAULT_USERS_BOOTSTRAP=${ENABLE_DEFAULT_USERS_BOOTSTRAP:-false}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-}
+      - DEFAULT_USER_EMAIL=${DEFAULT_USER_EMAIL:-}
+      - DEFAULT_USER_PASSWORD=${DEFAULT_USER_PASSWORD:-}
+      - ALLOW_TEST_TRIGGER=${ALLOW_TEST_TRIGGER:-false}
+      - TYPE_MD_PATH=/app/Type.md
+      - SITE_ASSETS_DIR=/app/storage/site-assets
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./Type.md:/app/Type.md:ro
+      - site_assets:/app/storage/site-assets
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org/}
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+      
+volumes:
+  pgdata:
+  site_assets:

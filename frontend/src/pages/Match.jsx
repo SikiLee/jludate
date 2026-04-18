@@ -4,10 +4,12 @@ import { motion } from 'framer-motion';
 import { Loader2, RefreshCw, Send, X } from 'lucide-react';
 import SakuraPetalsOverlay from '../components/SakuraPetalsOverlay';
 import api from '../api';
+import { XINGHUA_TI_TYPE_COPY } from '../constants/xinghuaTi';
 
 const MATCH_CATEGORY_OPTIONS = [
   { key: 'love', label: '恋爱匹配' },
-  { key: 'friend', label: '交友匹配' }
+  { key: 'friend', label: '交友匹配' },
+  { key: 'xinghua', label: '杏花搭子' }
 ];
 
 const MODULE_LABEL_MAP = {
@@ -51,6 +53,11 @@ function Match() {
   const [openModuleKeys, setOpenModuleKeys] = useState({});
   const chatPollRef = useRef(null);
   const matchResultId = data?.match?.match_result_id || null;
+  const isXinghua = category === 'xinghua';
+  const xinghuaTypeCode = typeof data?.partner?.xinghua_ti_type === 'string' ? data.partner.xinghua_ti_type.trim() : '';
+  const xinghuaTypeName = xinghuaTypeCode
+    ? `${xinghuaTypeCode}${XINGHUA_TI_TYPE_COPY[xinghuaTypeCode]?.title ? ` · ${XINGHUA_TI_TYPE_COPY[xinghuaTypeCode].title}` : ''}`
+    : '未填写';
 
   useEffect(() => {
     let cancelled = false;
@@ -168,6 +175,9 @@ function Match() {
                     <p className="text-xs text-[#7a7278] font-shsans">对方个人信息</p>
                     <p className="mt-1 text-xl font-black text-[#1a1a2e] font-shsans">{data.partner?.nickname || '该用户未填写昵称'}</p>
                     <p className="mt-1 text-sm text-[#4a4a5e] font-shsans">{data.partner?.college || '学院未填'} · {data.partner?.grade || '年级未填'}</p>
+                    {isXinghua ? (
+                      <p className="mt-1 text-sm text-[#4a4a5e] font-shsans">{xinghuaTypeName}</p>
+                    ) : null}
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-[#7a7278] font-shsans">总契合度</p>
@@ -175,15 +185,6 @@ function Match() {
                       {Number(data.match?.final_match_percent || 0).toFixed(1)}%
                     </p>
                   </div>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-roseTint/35 bg-white/70 p-6">
-                <p className="text-sm font-black text-[#1a1a2e] font-shsans mb-3">匹配理由</p>
-                <div className="space-y-2">
-                  {(data.match_reasons || []).slice(0, 3).map((reason, idx) => (
-                    <p key={`reason-${idx}`} className="text-sm text-[#4a4a5e] font-shsans leading-relaxed">- {reason}</p>
-                  ))}
                 </div>
               </div>
 
@@ -233,49 +234,53 @@ function Match() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-5 text-xs font-shsans text-[#7a7278]">
-                <button type="button" onClick={() => setReportOpen(true)} className="underline underline-offset-2 hover:text-[#4a4a5e]">查看匹配详细报告</button>
-              </div>
+              {!isXinghua ? (
+                <div className="flex items-center gap-5 text-xs font-shsans text-[#7a7278]">
+                  <button type="button" onClick={() => setReportOpen(true)} className="underline underline-offset-2 hover:text-[#4a4a5e]">查看匹配详细报告</button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
       </motion.div>
 
-      <Modal open={reportOpen} title="匹配详细报告" onClose={() => setReportOpen(false)}>
-        {!data?.detailed_report ? (
-          <p className="text-sm text-[#7a7278] font-shsans">暂无详细报告</p>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-roseTint/25 bg-white p-4 text-center">
-              <p className="text-xs text-[#7a7278] font-shsans">总契合度</p>
-              <p className="mt-1 text-4xl font-black text-szured font-shsans">{Number(data.detailed_report.total_score || 0).toFixed(1)}%</p>
+      {!isXinghua ? (
+        <Modal open={reportOpen} title="匹配详细报告" onClose={() => setReportOpen(false)}>
+          {!data?.detailed_report ? (
+            <p className="text-sm text-[#7a7278] font-shsans">暂无详细报告</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-roseTint/25 bg-white p-4 text-center">
+                <p className="text-xs text-[#7a7278] font-shsans">总契合度</p>
+                <p className="mt-1 text-4xl font-black text-szured font-shsans">{Number(data.detailed_report.total_score || 0).toFixed(1)}%</p>
+              </div>
+              {(data.detailed_report.modules || []).map((m) => {
+                const open = Boolean(openModuleKeys[m.module_index]);
+                return (
+                  <div key={`mod-${m.module_index}`} className="rounded-2xl border border-roseTint/25 bg-white/70 p-4">
+                    <button type="button" onClick={() => setOpenModuleKeys((prev) => ({ ...prev, [m.module_index]: !open }))} className="w-full flex items-center justify-between text-left">
+                      <span className="text-sm font-bold text-[#1a1a2e] font-shsans">
+                        {MODULE_LABEL_MAP[m.module_index] || `模块 ${m.module_index}`}
+                      </span>
+                      <span className="text-sm font-black text-[#1a1a2e]">{Number(m.module_score || 0).toFixed(1)}%</span>
+                    </button>
+                    {open ? (
+                      <div className="mt-3 space-y-3">
+                        {(m.top_questions || []).map((qItem) => (
+                          <div key={`q-${m.module_index}-${qItem.question_number}`} className="rounded-xl border border-roseTint/20 bg-white p-3">
+                            <p className="text-sm font-bold text-[#1a1a2e]">{qItem.question_title}</p>
+                            <p className="mt-1 text-sm text-[#4a4a5e] leading-relaxed">{qItem.reason}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
-            {(data.detailed_report.modules || []).map((m) => {
-              const open = Boolean(openModuleKeys[m.module_index]);
-              return (
-                <div key={`mod-${m.module_index}`} className="rounded-2xl border border-roseTint/25 bg-white/70 p-4">
-                  <button type="button" onClick={() => setOpenModuleKeys((prev) => ({ ...prev, [m.module_index]: !open }))} className="w-full flex items-center justify-between text-left">
-                    <span className="text-sm font-bold text-[#1a1a2e] font-shsans">
-                      {MODULE_LABEL_MAP[m.module_index] || `模块 ${m.module_index}`}
-                    </span>
-                    <span className="text-sm font-black text-[#1a1a2e]">{Number(m.module_score || 0).toFixed(1)}%</span>
-                  </button>
-                  {open ? (
-                    <div className="mt-3 space-y-3">
-                      {(m.top_questions || []).map((qItem) => (
-                        <div key={`q-${m.module_index}-${qItem.question_number}`} className="rounded-xl border border-roseTint/20 bg-white p-3">
-                          <p className="text-sm font-bold text-[#1a1a2e]">{qItem.question_title}</p>
-                          <p className="mt-1 text-sm text-[#4a4a5e] leading-relaxed">{qItem.reason}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Modal>
+          )}
+        </Modal>
+      ) : null}
     </div>
   );
 }

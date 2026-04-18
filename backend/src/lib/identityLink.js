@@ -365,6 +365,7 @@ export async function getUserMatchDisplayProfileByRespondentId(
       u.campus,
       u.college,
       u.grade,
+      u.xinghua_ti_type,
       u.message_to_partner,
       u.share_contact_with_match,
       u.match_contact_detail
@@ -404,6 +405,7 @@ export async function getUserMatchDisplayProfileByRespondentId(
     campus: typeof row.campus === 'string' ? row.campus.trim() : '',
     college: typeof row.college === 'string' ? row.college.trim() : '',
     grade: typeof row.grade === 'string' ? row.grade.trim() : '',
+    xinghua_ti_type: typeof row.xinghua_ti_type === 'string' ? row.xinghua_ti_type.trim() : '',
     message_to_partner: typeof row.message_to_partner === 'string' ? row.message_to_partner : '',
     partner_contact_for_match: partnerContactForMatch
   };

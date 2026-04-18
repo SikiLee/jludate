@@ -1,6 +1,7 @@
 import { ensureSchema, identityPool, surveyPool } from 'lib/db';
 import { listActiveIdentityProfilesForMatching } from 'lib/identityLink';
-import { sendMatchEmail, sendMatchFailedEmail } from 'lib/email';
+import { sendMatchEmail } from 'lib/email';
+import { XINGHUA_TI_TYPE_CODE_SET } from 'lib/xinghuaTiTypes';
 
 const MATCH_CATEGORIES = Object.freeze(['love', 'friend', 'xinghua']);
 
@@ -75,6 +76,19 @@ function isValidGender(value) {
   return value === 'male' || value === 'female';
 }
 
+function isValidXinghuaType(value) {
+  return typeof value === 'string' && value.length === 4 && XINGHUA_TI_TYPE_CODE_SET.has(value);
+}
+
+function xinghuaTypeDistance(typeA, typeB) {
+  if (!isValidXinghuaType(typeA) || !isValidXinghuaType(typeB)) return null;
+  let diff = 0;
+  for (let i = 0; i < 4; i += 1) {
+    if (typeA[i] !== typeB[i]) diff += 1;
+  }
+  return diff;
+}
+
 function gradeToIndex(grade) {
   // must match lib/grade.js ordering (0..12)
   const order = [
@@ -86,7 +100,37 @@ function gradeToIndex(grade) {
   return idx >= 0 ? idx : null;
 }
 
-function passesHardFilters(userA, userB) {
+function passesHardFilters(userA, userB, category) {
+  if (category === 'xinghua') {
+    if (!isValidGender(userA.gender) || !isValidGender(userB.gender)) return false;
+    if (userA.hard?.target_gender !== userB.gender) return false;
+    if (userB.hard?.target_gender !== userA.gender) return false;
+
+    const validTimes = new Set(['sun_am', 'sun_pm', 'any']);
+    const aTime = typeof userA.hard?.preferred_time === 'string' ? userA.hard.preferred_time.trim() : '';
+    const bTime = typeof userB.hard?.preferred_time === 'string' ? userB.hard.preferred_time.trim() : '';
+    if (!validTimes.has(aTime) || !validTimes.has(bTime)) return false;
+    if (aTime !== 'any' && bTime !== 'any' && aTime !== bTime) return false;
+
+    const aType = isValidXinghuaType(userA.xinghua_ti_type) ? userA.xinghua_ti_type : '';
+    const bType = isValidXinghuaType(userB.xinghua_ti_type) ? userB.xinghua_ti_type : '';
+    if (!aType || !bType) return false;
+
+    const resolveRequired = (target, selfType) => {
+      if (target === 'any') return null;
+      if (target === 'same_as_me') return selfType || null;
+      if (isValidXinghuaType(target)) return target;
+      return selfType || null;
+    };
+    const aTarget = typeof userA.hard?.target_xinghua_ti === 'string' ? userA.hard.target_xinghua_ti.trim() : 'same_as_me';
+    const bTarget = typeof userB.hard?.target_xinghua_ti === 'string' ? userB.hard.target_xinghua_ti.trim() : 'same_as_me';
+    const aRequired = resolveRequired(aTarget, aType);
+    const bRequired = resolveRequired(bTarget, bType);
+    if (aRequired && bType !== aRequired) return false;
+    if (bRequired && aType !== bRequired) return false;
+    return true;
+  }
+
   // gender preference (both ways)
   if (!isValidGender(userA.gender) || !isValidGender(userB.gender)) return false;
   if (userA.hard?.target_gender !== userB.gender) return false;
@@ -241,7 +285,26 @@ function compensationBonus(consecutiveFails) {
   return Math.min(6, 1.5 * k);
 }
 
-function computePairScore(userA, userB, moduleQuestions, bonusMap) {
+function computePairScore(userA, userB, moduleQuestions, bonusMap, category) {
+  if (category === 'xinghua') {
+    const dist = xinghuaTypeDistance(userA.xinghua_ti_type, userB.xinghua_ti_type);
+    if (dist === null || dist > 2) {
+      return { m1: 0, m2: 0, m3: 0, base: 0, compensation_bonus: 0, final: 0 };
+    }
+    const baseByDist = [96, 84, 72];
+    const base = baseByDist[dist] || 0;
+    const bA = compensationBonus(bonusMap.get(userA.respondent_id) || 0);
+    const bB = compensationBonus(bonusMap.get(userB.respondent_id) || 0);
+    return {
+      m1: 0,
+      m2: 0,
+      m3: round1(((2 - dist) / 2) * 100),
+      base: round1(base),
+      compensation_bonus: round1(bA + bB),
+      final: round1(Math.min(99.9, base + bA + bB))
+    };
+  }
+
   const modules = {
     1: moduleQuestions.get(1) || [],
     2: moduleQuestions.get(2) || [],
@@ -278,7 +341,10 @@ function computePairScore(userA, userB, moduleQuestions, bonusMap) {
   };
 }
 
-function thresholdPass(score) {
+function thresholdPass(score, category) {
+  if (category === 'xinghua') {
+    return score.final >= 72;
+  }
   return score.final >= 62 && score.m2 >= 55;
 }
 
@@ -452,14 +518,14 @@ async function runWeeklyMatchingForCategory({
       for (let j = 0; j < right.length; j += 1) {
         const a = left[i];
         const b = right[j];
-        if (!passesHardFilters(a, b)) {
+        if (!passesHardFilters(a, b, category)) {
           continue;
         }
         hasAnyHardCandidate.set(a.respondent_id, true);
         hasAnyHardCandidate.set(b.respondent_id, true);
 
-        const score = computePairScore(a, b, moduleQuestions, consecutiveFailMap);
-        if (!thresholdPass(score)) {
+        const score = computePairScore(a, b, moduleQuestions, consecutiveFailMap, category);
+        if (!thresholdPass(score, category)) {
           continue;
         }
         hasAnyThresholdCandidate.set(a.respondent_id, true);
@@ -483,7 +549,7 @@ async function runWeeklyMatchingForCategory({
       const a = left[i];
       const b = right[j];
       const edge = edges.find((e) => e.i === i && e.j === j);
-      const score = edge?.score || computePairScore(a, b, moduleQuestions, consecutiveFailMap);
+      const score = edge?.score || computePairScore(a, b, moduleQuestions, consecutiveFailMap, category);
 
       const ins = await surveyPool.query(
         `
@@ -574,31 +640,37 @@ async function runWeeklyMatchingForCategory({
         const rid = p.respondent_id;
         const matched = matchedRespondents.has(rid);
         // eslint-disable-next-line no-await-in-loop
-        const ok = matched
-          ? await (async () => {
-              const matchResultId = matchResultIdByRespondent.get(rid);
-              const matchRow = await surveyPool.query(
-                `
-                SELECT respondent1_id, respondent2_id, final_match_percent
-                FROM unidate_app.match_results
-                WHERE id = $1
-                LIMIT 1
-                `,
-                [matchResultId]
-              );
-              const row = matchRow.rows[0];
-              const partnerId = row.respondent1_id === rid ? row.respondent2_id : row.respondent1_id;
-              const partner = byRespondent.get(partnerId);
-              return sendMatchEmail({
-                toEmail: p.email,
-                partnerNickname: partner?.nickname || '你的匹配对象',
-                matchPercent: Number(row.final_match_percent) || 0,
-                selfRose: '-',
-                partnerRose: '-',
-                runAt: now
-              });
-            })()
-          : sendMatchFailedEmail({ toEmail: p.email, runAt: now });
+        const ok = await (async () => {
+          let partnerNickname = '';
+          let matchPercent = 0;
+          if (matched) {
+            const matchResultId = matchResultIdByRespondent.get(rid);
+            const matchRow = await surveyPool.query(
+              `
+              SELECT respondent1_id, respondent2_id, final_match_percent
+              FROM unidate_app.match_results
+              WHERE id = $1
+              LIMIT 1
+              `,
+              [matchResultId]
+            );
+            const row = matchRow.rows[0];
+            const partnerId = row.respondent1_id === rid ? row.respondent2_id : row.respondent1_id;
+            const partner = byRespondent.get(partnerId);
+            partnerNickname = partner?.nickname || '';
+            matchPercent = Number(row.final_match_percent) || 0;
+          }
+          return sendMatchEmail({
+            toEmail: p.email,
+            partnerNickname,
+            matchPercent,
+            selfRose: '-',
+            partnerRose: '-',
+            runAt: now,
+            matched,
+            category
+          });
+        })();
 
         if (ok) delivered += 1;
         else failed += 1;
@@ -764,10 +836,10 @@ export async function previewWeeklyMatchingStats({ date = new Date() } = {}) {
       for (let j = 0; j < right.length; j += 1) {
         const a = left[i];
         const b = right[j];
-        if (!passesHardFilters(a, b)) continue;
+        if (!passesHardFilters(a, b, category)) continue;
         hardFilterEdges += 1;
-        const score = computePairScore(a, b, moduleQuestions, consecutiveFailMap);
-        if (!thresholdPass(score)) continue;
+        const score = computePairScore(a, b, moduleQuestions, consecutiveFailMap, category);
+        if (!thresholdPass(score, category)) continue;
         edges.push({ i, j, cost: -score.final });
       }
     }
@@ -796,8 +868,8 @@ export async function previewWeeklyMatchingStats({ date = new Date() } = {}) {
   out.xinghua.questionnaire_filled = Number(xinghuaFilledRes.rows[0]?.total || 0);
 
   out.total.questionnaire_filled = out.love.questionnaire_filled + out.friend.questionnaire_filled + out.xinghua.questionnaire_filled;
-  out.total.matched_pairs = out.love.matched_pairs + out.friend.matched_pairs;
-  out.total.matched_users = out.love.matched_users + out.friend.matched_users;
+  out.total.matched_pairs = out.love.matched_pairs + out.friend.matched_pairs + out.xinghua.matched_pairs;
+  out.total.matched_users = out.love.matched_users + out.friend.matched_users + out.xinghua.matched_users;
   out.total.funnel.left_participants = out.love.funnel.left_participants + out.friend.funnel.left_participants + out.xinghua.funnel.left_participants;
   out.total.funnel.right_participants = out.love.funnel.right_participants + out.friend.funnel.right_participants + out.xinghua.funnel.right_participants;
   out.total.funnel.hard_filter_edges = out.love.funnel.hard_filter_edges + out.friend.funnel.hard_filter_edges + out.xinghua.funnel.hard_filter_edges;

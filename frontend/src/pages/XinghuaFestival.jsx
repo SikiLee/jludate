@@ -20,7 +20,8 @@ function emptyPayload() {
     hard_filter: {
       target_gender: '',
       preferred_time: '',
-      target_xinghua_ti: 'same_as_me'
+      target_xinghua_ti: 'same_as_me',
+      self_xinghua_ti_type: ''
     },
     match_settings: {
       nickname: '',
@@ -66,6 +67,9 @@ export default function XinghuaFestival() {
         const base = emptyPayload();
         const serverPayload = data.payload && typeof data.payload === 'object' ? data.payload : {};
         base.hard_filter = { ...base.hard_filter, ...(serverPayload.hard_filter || {}) };
+        if (XINGHUA_TI_TYPE_CODES.includes(tiType)) {
+          base.hard_filter.self_xinghua_ti_type = tiType;
+        }
         if (!isValidTargetXinghuaTi(base.hard_filter.target_xinghua_ti)) {
           base.hard_filter.target_xinghua_ti = 'same_as_me';
         }
@@ -81,7 +85,7 @@ export default function XinghuaFestival() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tiType]);
 
   const hardOk = useMemo(() => {
     const h = payload.hard_filter || {};
@@ -89,6 +93,7 @@ export default function XinghuaFestival() {
       h.target_gender
         && ['sun_am', 'sun_pm', 'any'].includes(h.preferred_time)
         && isValidTargetXinghuaTi(h.target_xinghua_ti)
+        && XINGHUA_TI_TYPE_CODES.includes(h.self_xinghua_ti_type)
     );
   }, [payload.hard_filter]);
 

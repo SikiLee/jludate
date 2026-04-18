@@ -1,5 +1,3 @@
-import { startWeeklyScheduler } from 'lib/scheduler';
-
 let bootstrapped = false;
 
 export function ensureServerBootstrap() {
@@ -8,5 +6,4 @@ export function ensureServerBootstrap() {
   }
 
   bootstrapped = true;
-  startWeeklyScheduler();
 }

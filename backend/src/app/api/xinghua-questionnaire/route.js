@@ -48,7 +48,11 @@ function normalizeXinghuaPayload(raw) {
       age_diff_older_max: normalized.hard_filter.age_diff_older_max,
       age_diff_younger_max: normalized.hard_filter.age_diff_younger_max,
       preferred_time: preferredTime,
-      target_xinghua_ti: normalizeTargetXinghuaTi(hard.target_xinghua_ti)
+      target_xinghua_ti: normalizeTargetXinghuaTi(hard.target_xinghua_ti),
+      self_xinghua_ti_type: typeof hard.self_xinghua_ti_type === 'string' && hard.self_xinghua_ti_type.length === 4
+        && XINGHUA_TI_TYPE_CODE_SET.has(hard.self_xinghua_ti_type)
+        ? hard.self_xinghua_ti_type.trim()
+        : ''
     },
     deep_survey: {},
     match_settings: {
@@ -77,6 +81,10 @@ function xinghuaHardFilterComplete(hard) {
     return false;
   }
   if (!TIME_VALUES.has(hard.preferred_time)) {
+    return false;
+  }
+  if (!(typeof hard.self_xinghua_ti_type === 'string' && hard.self_xinghua_ti_type.length === 4
+    && XINGHUA_TI_TYPE_CODE_SET.has(hard.self_xinghua_ti_type))) {
     return false;
   }
   return true;
@@ -215,10 +223,11 @@ export async function POST(request) {
             message_to_partner = $4,
             xinghua_preferred_time = $5,
             xinghua_match_target_ti = $6,
+            xinghua_ti_type = $7,
             auto_weekly_match = TRUE,
             xinghua_festival_participate = TRUE,
-            nickname = $7
-        WHERE id = $8
+            nickname = $8
+        WHERE id = $9
         `,
         [
           merged.hard_filter.target_gender,
@@ -227,6 +236,7 @@ export async function POST(request) {
           includeMessage ? rawMessage : '',
           merged.hard_filter.preferred_time,
           normalizeTargetXinghuaTi(merged.hard_filter.target_xinghua_ti),
+          merged.hard_filter.self_xinghua_ti_type,
           nicknameResult.value || null,
           authResult.user.id
         ]

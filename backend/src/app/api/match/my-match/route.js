@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 
 function normalizeCategory(value) {
   const v = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (v === 'xinghua') return 'xinghua';
   return v === 'friend' ? 'friend' : 'love';
 }
 
@@ -123,12 +124,30 @@ export async function GET(request) {
     const draftMap = new Map(draftsRes.rows.map((r) => [r.respondent_id, r.payload || {}]));
     const selfPayload = draftMap.get(respondentId) || {};
     const partnerPayload = draftMap.get(partnerRespondentId) || {};
-    const report = await buildMatchReportFromDrafts({
-      category,
-      selfDraft: selfPayload,
-      partnerDraft: partnerPayload,
-      finalPercent: Number(row.final_match_percent) || Number(row.score_snapshot) || 0
-    });
+    const partnerSettings = partnerPayload && typeof partnerPayload.match_settings === 'object' && partnerPayload.match_settings !== null
+      ? partnerPayload.match_settings
+      : {};
+    const partnerIncludeMessage = Boolean(partnerSettings.include_message_to_partner);
+    const partnerDraftMessage = partnerIncludeMessage && typeof partnerSettings.message_to_partner === 'string'
+      ? partnerSettings.message_to_partner.trim()
+      : '';
+
+    let report = null;
+    let matchReasons = [];
+    if (category === 'xinghua') {
+      const partnerType = typeof partnerProfile?.xinghua_ti_type === 'string'
+        ? partnerProfile.xinghua_ti_type.trim()
+        : '';
+      matchReasons = [partnerType || '未填写'];
+    } else {
+      report = await buildMatchReportFromDrafts({
+        category,
+        selfDraft: selfPayload,
+        partnerDraft: partnerPayload,
+        finalPercent: Number(row.final_match_percent) || Number(row.score_snapshot) || 0
+      });
+      matchReasons = report.top_reasons;
+    }
     if (Number.isInteger(Number(row.cycle_id))) {
       await markFirstMatchedResultView({
         cycleId: Number(row.cycle_id),
@@ -147,14 +166,19 @@ export async function GET(request) {
       self: { respondent_id: respondentId },
       cycle,
       status: 'matched',
-      match_reasons: report.top_reasons,
+      match_reasons: matchReasons,
       detailed_report: report,
       match: {
         match_result_id: row.match_result_id,
         final_match_percent: Number(row.final_match_percent) || Number(row.score_snapshot) || 0,
         matched_at: row.matched_at || null
       },
-      partner: partnerProfile || null
+      partner: partnerProfile
+        ? {
+          ...partnerProfile,
+          message_to_partner: partnerDraftMessage || partnerProfile.message_to_partner || ''
+        }
+        : null
     });
   } catch (error) {
     console.error('GET /api/match/my-match failed:', error);

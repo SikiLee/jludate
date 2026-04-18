@@ -169,7 +169,9 @@ export async function sendMatchEmail({
   matchPercent,
   selfRose,
   partnerRose,
-  runAt
+  runAt,
+  matched = false,
+  category = 'love'
 }) {
   const brandName = await resolveBrandName();
   const templates = await resolveEmailTemplates();
@@ -177,10 +179,10 @@ export async function sendMatchEmail({
     timeZone: 'Asia/Shanghai',
     hour12: false
   });
-  const subjectTemplate = templates?.match_result?.subject || '【{{brand_name}}】你的本周匹配结果已送达';
+  const subjectTemplate = templates?.match_result?.subject || '【{{brand_name}}】本期匹配结果通知';
   const bodyTemplate = templates?.match_result?.body || [
-    '【{{brand_name}} 每周匹配】',
-    '你已成功匹配，请登录网站查看匹配详情与对话。',
+    '【{{brand_name}} 匹配结果通知】',
+    '你的本期匹配结果已生成，请登录网站查看。',
     '查看入口：{{match_url}}',
     '派发时间：{{run_at}} ({{timezone}})'
   ].join('\n');
@@ -196,6 +198,8 @@ export async function sendMatchEmail({
     match_percent: matchPercent,
     self_rose: selfRose,
     partner_rose: partnerRose,
+    matched: matched ? '是' : '否',
+    category: typeof category === 'string' ? category : '',
     run_at: formattedRunTime,
     timezone: 'Asia/Shanghai'
   };
@@ -208,38 +212,6 @@ export async function sendMatchEmail({
       text: applyTemplateVariables(bodyTemplate, templateVariables)
     },
     'Failed to send match email'
-  );
-}
-
-export async function sendMatchFailedEmail({ toEmail, runAt }) {
-  const brandName = await resolveBrandName();
-  const templates = await resolveEmailTemplates();
-  const formattedRunTime = new Date(runAt).toLocaleString('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    hour12: false
-  });
-  const subjectTemplate = templates?.match_failed?.subject || '【{{brand_name}}】本周暂未匹配到合适对象';
-  const bodyTemplate = templates?.match_failed?.body || [
-    '【{{brand_name}} 每周匹配】',
-    '本周暂未匹配到合适对象，我们下周会继续为你尝试。',
-    '查看入口：{{match_url}}',
-    '派发时间：{{run_at}} ({{timezone}})'
-  ].join('\n');
-  const templateVariables = {
-    brand_name: brandName,
-    match_url: resolveMatchResultUrl(),
-    run_at: formattedRunTime,
-    timezone: 'Asia/Shanghai'
-  };
-
-  return sendMailSafely(
-    {
-      from: SMTP_FROM,
-      to: toEmail,
-      subject: applyTemplateVariables(subjectTemplate, templateVariables),
-      text: applyTemplateVariables(bodyTemplate, templateVariables)
-    },
-    'Failed to send match failed email'
   );
 }
 

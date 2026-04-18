@@ -105,20 +105,10 @@ export const DEFAULT_EMAIL_TEMPLATES = Object.freeze({
     body: '【{{brand_name}}】您的验证码是: {{code}}\n一次深度问卷，匹配一个和你最契合的人。欢迎加入校园专属配对平台！'
   }),
   match_result: Object.freeze({
-    subject: '【{{brand_name}}】你的本周匹配结果已送达',
+    subject: '【{{brand_name}}】本期匹配结果通知',
     body: [
-      '【{{brand_name}} 每周匹配】',
-      '你已成功匹配，请登录网站查看匹配详情与对话。',
-      '查看入口：{{match_url}}',
-      '派发时间：{{run_at}} ({{timezone}})'
-    ].join('\n')
-  }),
-  match_failed: Object.freeze({
-    subject: '【{{brand_name}}】本周暂未匹配到合适对象',
-    body: [
-      '【{{brand_name}} 每周匹配】',
-      '本周暂未匹配到合适对象，我们下周会继续为你尝试。',
-      '你可以随时登录查看状态或完善问卷，以提升匹配成功率。',
+      '【{{brand_name}} 匹配结果通知】',
+      '你的本期匹配结果已生成，请登录网站查看。',
       '查看入口：{{match_url}}',
       '派发时间：{{run_at}} ({{timezone}})'
     ].join('\n')
@@ -443,10 +433,6 @@ function cloneDefaultEmailTemplates() {
       subject: DEFAULT_EMAIL_TEMPLATES.match_result.subject,
       body: DEFAULT_EMAIL_TEMPLATES.match_result.body
     },
-    match_failed: {
-      subject: DEFAULT_EMAIL_TEMPLATES.match_failed.subject,
-      body: DEFAULT_EMAIL_TEMPLATES.match_failed.body
-    },
     exception_approved: {
       subject: DEFAULT_EMAIL_TEMPLATES.exception_approved.subject,
       body: DEFAULT_EMAIL_TEMPLATES.exception_approved.body
@@ -482,9 +468,6 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
   const matchResult = rawValue.match_result && typeof rawValue.match_result === 'object'
     ? rawValue.match_result
     : {};
-  const matchFailed = rawValue.match_failed && typeof rawValue.match_failed === 'object'
-    ? rawValue.match_failed
-    : {};
   const exceptionApproved = rawValue.exception_approved && typeof rawValue.exception_approved === 'object'
     ? rawValue.exception_approved
     : {};
@@ -496,8 +479,6 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
   const verificationBody = normalizeTemplateText(verification.body, MAX_EMAIL_BODY_LENGTH);
   const matchResultSubject = normalizeTemplateText(matchResult.subject, MAX_EMAIL_SUBJECT_LENGTH);
   const matchResultBody = normalizeTemplateText(matchResult.body, MAX_EMAIL_BODY_LENGTH);
-  const matchFailedSubject = normalizeTemplateText(matchFailed.subject, MAX_EMAIL_SUBJECT_LENGTH);
-  const matchFailedBody = normalizeTemplateText(matchFailed.body, MAX_EMAIL_BODY_LENGTH);
   const exceptionApprovedSubject = normalizeTemplateText(exceptionApproved.subject, MAX_EMAIL_SUBJECT_LENGTH);
   const exceptionApprovedBody = normalizeTemplateText(exceptionApproved.body, MAX_EMAIL_BODY_LENGTH);
   const exceptionRejectedSubject = normalizeTemplateText(exceptionRejected.subject, MAX_EMAIL_SUBJECT_LENGTH);
@@ -510,8 +491,6 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
       || !verificationBody
       || !matchResultSubject
       || !matchResultBody
-      || !matchFailedSubject
-      || !matchFailedBody
       || !exceptionApprovedSubject
       || !exceptionApprovedBody
       || !exceptionRejectedSubject
@@ -529,10 +508,6 @@ function normalizeEmailTemplates(rawValue, { strict = false } = {}) {
     match_result: {
       subject: matchResultSubject || DEFAULT_EMAIL_TEMPLATES.match_result.subject,
       body: matchResultBody || DEFAULT_EMAIL_TEMPLATES.match_result.body
-    },
-    match_failed: {
-      subject: matchFailedSubject || DEFAULT_EMAIL_TEMPLATES.match_failed.subject,
-      body: matchFailedBody || DEFAULT_EMAIL_TEMPLATES.match_failed.body
     },
     exception_approved: {
       subject: exceptionApprovedSubject || DEFAULT_EMAIL_TEMPLATES.exception_approved.subject,

@@ -34,8 +34,8 @@ function Home() {
       ? homeHeroBackgroundUrl.trim()
       : defaultHeroPhoto;
   const isLoggedIn = Boolean(getAccessToken());
-  const joinTarget = '/xinghua-ti';
-  const joinLabel = '立即测试';
+  const joinTarget = '/auth';
+  const joinLabel = '立即加入';
   const matchSchedule = siteConfig.match_schedule && typeof siteConfig.match_schedule === 'object'
     ? siteConfig.match_schedule
     : { day_of_week: 5, hour: 20, minute: 0 };
@@ -275,17 +275,15 @@ function Home() {
             吉大校园公益匹配平台
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-medium font-ysong mb-6 text-[#1a1a2e] leading-[1.45] tracking-[0.06em] md:tracking-[0.08em]">
-            sbti已经过时了，<br className="sm:hidden" />
-            <span className="whitespace-nowrap sm:whitespace-normal">来测你的南岭杏花ti</span>
+            杏花佳节
+            <br />
+            <span className="whitespace-nowrap sm:whitespace-normal">吉遇良缘</span>
           </h1>
           <div className="mb-8 md:mb-10 font-shsans text-sm md:text-base font-light text-[#4a4a5e] tracking-wide">
             For mails.jlu.edu.cn
           </div>
           <p className="text-lg md:text-xl mb-12 font-extralight max-w-2xl mx-auto leading-relaxed font-shsans text-[#4a4a5e] tracking-wide">
-            拯救你的杏花节寂寞
-            <br />
-            周六晚八点杏花搭子匹配<br />
-            周日杏花节当天开放杏花搭子现场匹配！
+            填写问卷，每周五晚十点，收到您的匹配吉友和匹配理由
           </p>
           {!isLoggedIn ? (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -298,13 +296,6 @@ function Home() {
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => navigate('/xinghua-ti/result')}
-                className="px-8 py-4 bg-white/90 border-2 border-roseTint/45 text-[#4a4a5e] font-bold rounded-full hover:bg-roseLight/35 transition-all shadow-[0_8px_24px_rgba(224,154,173,0.2)] transform hover:-translate-y-0.5 text-lg font-shsans"
-              >
-                查看南岭杏花ti结果
-              </button>
               <button
                 type="button"
                 onClick={() => navigate('/match')}

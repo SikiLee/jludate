@@ -186,7 +186,7 @@ export async function POST(request) {
           contactResult.detail,
           includeMessage ? rawMessage : '',
           Boolean(merged.match_settings.auto_participate_weekly_match),
-          nicknameResult.value || null,
+          nicknameResult.value || '',
           authResult.user.id
         ]
       );

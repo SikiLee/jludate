@@ -60,10 +60,14 @@ export async function GET(request) {
     const messagesRes = await surveyPool.query(
       `
       SELECT id, sender_respondent_id, message_text, created_at
-      FROM unidate_app.match_messages
-      WHERE match_result_id = $1
+      FROM (
+        SELECT id, sender_respondent_id, message_text, created_at
+        FROM unidate_app.match_messages
+        WHERE match_result_id = $1
+        ORDER BY id DESC
+        LIMIT 200
+      ) AS latest
       ORDER BY id ASC
-      LIMIT 200
       `,
       [matchResultId]
     );

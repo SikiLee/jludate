@@ -49,13 +49,6 @@ function SurveyEntry() {
               >
                 进入交友匹配
               </button>
-              <button
-                type="button"
-                className={ENTRY_BUTTON_CLASS}
-                onClick={() => navigate('/xinghua-festival')}
-              >
-                杏花节搭子匹配
-              </button>
             </div>
           </div>
         </motion.div>

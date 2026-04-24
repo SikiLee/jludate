@@ -5,6 +5,40 @@ import toast from 'react-hot-toast';
 import SakuraPetalsOverlay from '../components/SakuraPetalsOverlay';
 import { XINGHUA_TI_STORAGE_KEY, XINGHUA_TI_TYPE_COPY } from '../constants/xinghuaTi';
 
+/** 公众号二维码：将后台下载的 PNG 放到 public/wechat-official-qrcode.png 会优先使用，否则用 SVG 占位 */
+const WECHAT_QR_SRC_PNG = '/wechat-official-qrcode.png';
+const WECHAT_QR_SRC_SVG = '/wechat-official-qrcode.svg';
+
+function waitForImagesInNode(node) {
+  if (!node) return Promise.resolve();
+  const imgs = node.querySelectorAll('img');
+  const tasks = [...imgs].map(
+    (img) =>
+      new Promise((resolve) => {
+        if (img.complete && img.naturalWidth > 0) {
+          resolve();
+          return;
+        }
+        const done = () => resolve();
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+      })
+  );
+  return Promise.all(tasks);
+}
+
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function safeReadResult() {
   try {
     const raw = window.localStorage.getItem(XINGHUA_TI_STORAGE_KEY);
@@ -33,22 +67,59 @@ export default function XinghuaTiResult() {
     const node = cardRef.current;
     if (!node) return;
     try {
+      await waitForImagesInNode(node);
       const mod = await import('html2canvas');
       const html2canvas = mod.default || mod;
       const canvas = await html2canvas(node, {
         useCORS: true,
+        allowTaint: false,
         backgroundColor: '#f5eae7',
         scale: 2,
         logging: false
       });
-      const dataUrl = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `南岭杏花ti-${type || 'result'}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      toast.success('已保存图片');
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error('生成图片失败'))),
+          'image/png',
+          1
+        );
+      });
+      const fileName = `南岭杏花ti-${type || 'result'}.png`;
+
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        try {
+          const file = new File([blob], fileName, { type: 'image/png' });
+          if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: '南岭杏花ti结果',
+              text: '保存到相册或分享给好友'
+            });
+            toast.success('已打开系统分享，请选择「存储到照片」或保存到文件');
+            return;
+          }
+        } catch (shareErr) {
+          if (shareErr && shareErr.name === 'AbortError') {
+            return;
+          }
+          // 继续走下载/预览兜底
+        }
+      }
+
+      try {
+        downloadBlob(blob, fileName);
+        toast.success('已保存；若相册里没有，请到「下载」文件夹查找，或再点一次用系统分享保存到相册');
+      } catch {
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank', 'noopener,noreferrer');
+        if (w) {
+          toast.success('已打开图片新窗口，请长按图片选择「存储到照片」');
+          setTimeout(() => URL.revokeObjectURL(url), 120000);
+        } else {
+          URL.revokeObjectURL(url);
+          toast.error('无法保存：请允许弹窗，或使用手机截图');
+        }
+      }
     } catch (e) {
       console.error('save xinghua result image failed', e);
       toast.error('保存失败，请稍后再试');
@@ -134,23 +205,40 @@ export default function XinghuaTiResult() {
               <p className="text-[#1a1a2e] font-bold font-shsans mb-2">危险行为</p>
               <p className="text-[#4a4a5e] font-shsans leading-relaxed">{copy?.danger || '—'}</p>
             </div>
+
+            <div className="mt-8 pt-6 border-t border-roseTint/35 flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-8">
+              <img
+                src={WECHAT_QR_SRC_PNG}
+                alt="JLUDate 微信公众号二维码"
+                width={112}
+                height={112}
+                className="w-[100px] h-[100px] sm:w-[112px] sm:h-[112px] object-contain rounded-xl border border-roseTint/40 bg-white shadow-sm shrink-0"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (el.dataset.fallback === '1') return;
+                  el.dataset.fallback = '1';
+                  el.src = WECHAT_QR_SRC_SVG;
+                }}
+              />
+              <div className="text-center sm:text-left space-y-2 max-w-md">
+                <p className="text-sm font-bold text-[#1a1a2e] font-shsans">关注公众号 · 获取活动与匹配动态</p>
+                <p className="text-xs sm:text-sm text-[#4a4a5e] font-shsans leading-relaxed">
+                  浏览器搜索{' '}
+                  <span className="font-black text-szured tracking-wide">jludate.com</span>
+                  {' '}参与校园公益匹配与杏花节活动
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             type="button"
             onClick={handleSaveImage}
             className="py-3 rounded-full border-2 border-roseTint/45 bg-white hover:bg-roseLight/35 text-[#4a4a5e] font-bold transition"
           >
             保存结果图片
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/xinghua-festival')}
-            className="py-3 rounded-full bg-ctaRose hover:bg-ctaRoseHover text-white font-bold shadow-[0_8px_24px_rgba(224,154,173,0.28)] transition text-center text-base"
-          >
-            去找杏花节搭子
           </button>
           <button
             type="button"

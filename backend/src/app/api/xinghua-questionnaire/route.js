@@ -237,7 +237,7 @@ export async function POST(request) {
           merged.hard_filter.preferred_time,
           normalizeTargetXinghuaTi(merged.hard_filter.target_xinghua_ti),
           merged.hard_filter.self_xinghua_ti_type,
-          nicknameResult.value || null,
+          nicknameResult.value || '',
           authResult.user.id
         ]
       );

@@ -12,7 +12,6 @@ import { useEffect } from 'react';
 import EmailExceptionApply from './pages/EmailExceptionApply';
 import XinghuaTi from './pages/XinghuaTi';
 import XinghuaTiResult from './pages/XinghuaTiResult';
-import XinghuaFestival from './pages/XinghuaFestival';
 
 function ProtectedRoute({ children }) {
   const token = getAccessToken();
@@ -48,11 +47,7 @@ function AppLayout() {
           <Route path="/email-exception" element={<EmailExceptionApply />} />
           <Route path="/xinghua-ti" element={<XinghuaTi />} />
           <Route path="/xinghua-ti/result" element={<XinghuaTiResult />} />
-          <Route path="/xinghua-festival" element={
-            <ProtectedRoute>
-              <XinghuaFestival />
-            </ProtectedRoute>
-          } />
+          <Route path="/xinghua-festival" element={<Navigate to="/survey" replace />} />
           <Route path="/survey" element={<SurveyEntry />} />
           <Route path="/survey/questionnaire" element={<Survey />} />
           <Route path="/rose" element={<RoseTypes />} />

@@ -25,6 +25,13 @@ function qType(n) {
   return `q${n}_match_type`;
 }
 
+function makePairKey(respondentIdA, respondentIdB) {
+  const a = String(respondentIdA || '').trim();
+  const b = String(respondentIdB || '').trim();
+  if (!a || !b) return '';
+  return a < b ? `${a}::${b}` : `${b}::${a}`;
+}
+
 function clamp01(x) {
   if (!Number.isFinite(x)) return 0;
   return Math.max(0, Math.min(1, x));
@@ -279,6 +286,29 @@ async function getConsecutiveUnmatchedCount(category, respondentIds) {
   return result;
 }
 
+async function getHistoricalMatchedPairKeySet(category, respondentIds) {
+  if (!respondentIds.length) return new Set();
+  const res = await surveyPool.query(
+    `
+    SELECT respondent1_id, respondent2_id
+    FROM unidate_app.match_results
+    WHERE match_category = $1
+      AND respondent1_id = ANY($2::text[])
+      AND respondent2_id = ANY($2::text[])
+      AND respondent1_id IS NOT NULL
+      AND respondent2_id IS NOT NULL
+    `,
+    [category, respondentIds]
+  );
+
+  const pairKeys = new Set();
+  for (const row of res.rows) {
+    const key = makePairKey(row.respondent1_id, row.respondent2_id);
+    if (key) pairKeys.add(key);
+  }
+  return pairKeys;
+}
+
 function compensationBonus(consecutiveFails) {
   const k = Number(consecutiveFails) || 0;
   if (k <= 0) return 0;
@@ -504,11 +534,12 @@ async function runWeeklyMatchingForCategory({
       getQuestionNumbersByModule(category)
     ]);
 
+    const respondentIds = participants.map((p) => p.respondent_id);
     const { left, right } = buildBipartiteSets(participants);
-    const consecutiveFailMap = await getConsecutiveUnmatchedCount(
-      category,
-      participants.map((p) => p.respondent_id)
-    );
+    const [consecutiveFailMap, historicalPairKeys] = await Promise.all([
+      getConsecutiveUnmatchedCount(category, respondentIds),
+      getHistoricalMatchedPairKeySet(category, respondentIds)
+    ]);
 
     const hasAnyHardCandidate = new Map(participants.map((p) => [p.respondent_id, false]));
     const hasAnyThresholdCandidate = new Map(participants.map((p) => [p.respondent_id, false]));
@@ -519,6 +550,9 @@ async function runWeeklyMatchingForCategory({
         const a = left[i];
         const b = right[j];
         if (!passesHardFilters(a, b, category)) {
+          continue;
+        }
+        if (historicalPairKeys.has(makePairKey(a.respondent_id, b.respondent_id))) {
           continue;
         }
         hasAnyHardCandidate.set(a.respondent_id, true);
@@ -823,12 +857,13 @@ export async function previewWeeklyMatchingStats({ date = new Date() } = {}) {
       listEligibleParticipants(category),
       getQuestionNumbersByModule(category)
     ]);
+    const respondentIds = participants.map((p) => p.respondent_id);
     const { left, right } = buildBipartiteSets(participants);
     // eslint-disable-next-line no-await-in-loop
-    const consecutiveFailMap = await getConsecutiveUnmatchedCount(
-      category,
-      participants.map((p) => p.respondent_id)
-    );
+    const [consecutiveFailMap, historicalPairKeys] = await Promise.all([
+      getConsecutiveUnmatchedCount(category, respondentIds),
+      getHistoricalMatchedPairKeySet(category, respondentIds)
+    ]);
 
     const edges = [];
     let hardFilterEdges = 0;
@@ -837,6 +872,7 @@ export async function previewWeeklyMatchingStats({ date = new Date() } = {}) {
         const a = left[i];
         const b = right[j];
         if (!passesHardFilters(a, b, category)) continue;
+        if (historicalPairKeys.has(makePairKey(a.respondent_id, b.respondent_id))) continue;
         hardFilterEdges += 1;
         const score = computePairScore(a, b, moduleQuestions, consecutiveFailMap, category);
         if (!thresholdPass(score, category)) continue;
@@ -876,4 +912,3 @@ export async function previewWeeklyMatchingStats({ date = new Date() } = {}) {
   out.total.funnel.threshold_edges = out.love.funnel.threshold_edges + out.friend.funnel.threshold_edges + out.xinghua.funnel.threshold_edges;
   return out;
 }
-
